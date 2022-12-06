@@ -1,10 +1,8 @@
 fn has_duplicates(chars: &&[char]) -> bool {
-    for (i, ch) in chars.iter().enumerate() {
-        if chars.iter().skip(i + 1).any(|x| x == ch) {
-            return true;
-        }
-    }
-    return false;
+    chars
+        .iter()
+        .enumerate()
+        .any(|(i, ch)| chars.iter().skip(i + 1).any(|x| x == ch))
 }
 
 fn main() {
