@@ -74,8 +74,7 @@ fn find_directory_to_delete(cwd: &DirectoryEntry, target: usize) -> Option<usize
         let result = contents
             .iter()
             .map(|x| find_directory_to_delete(x, target))
-            .filter(|x| x.is_some())
-            .map(|x| x.unwrap())
+            .filter_map(|x| x)
             .min()
             .unwrap_or(size);
 
