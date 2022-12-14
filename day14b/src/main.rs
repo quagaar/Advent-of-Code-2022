@@ -1,5 +1,5 @@
-fn solve(input: &str) -> usize {
-    let scans: Vec<Vec<(usize, usize)>> = input
+fn get_scans(input: &str) -> Vec<Vec<(usize, usize)>> {
+    input
         .lines()
         .map(|line| {
             line.split(" -> ")
@@ -10,8 +10,10 @@ fn solve(input: &str) -> usize {
                 })
                 .collect()
         })
-        .collect();
+        .collect()
+}
 
+fn build_map(scans: &Vec<Vec<(usize, usize)>>) -> (Vec<Vec<bool>>, usize) {
     let min_x = *scans.iter().flatten().map(|(x, _)| x).min().unwrap();
     let max_x = *scans.iter().flatten().map(|(x, _)| x).max().unwrap();
     let max_y = *scans.iter().flatten().map(|(_, y)| y).max().unwrap() + 2;
@@ -43,29 +45,41 @@ fn solve(input: &str) -> usize {
         map[max_y][x] = true;
     }
 
-    let start_x = 500 - min_x;
+    return (map, min_x);
+}
+
+fn drop_sand((x, y): (usize, usize), map: &Vec<Vec<bool>>) -> Option<(usize, usize)> {
+    if !map[y + 1][x] {
+        return Some((x, y + 1));
+    }
+    if !map[y + 1][x - 1] {
+        return Some((x - 1, y + 1));
+    }
+    if !map[y + 1][x + 1] {
+        return Some((x + 1, y + 1));
+    }
+    return None;
+}
+
+fn solve(input: &str) -> usize {
+    let scans = get_scans(input);
+    let (mut map, x_offset) = build_map(&scans);
+
+    let start_x = 500 - x_offset;
     let mut result = 0;
 
     loop {
-        let mut x = start_x;
+        let mut pos = (start_x, 0);
 
-        for y in 0..max_y {
-            if map[y + 1][x] {
-                if map[y + 1][x - 1] {
-                    if map[y + 1][x + 1] {
-                        map[y][x] = true;
-                        result += 1;
-                        if y == 0 {
-                            return result;
-                        }
-                        break;
-                    } else {
-                        x = x + 1;
-                    }
-                } else {
-                    x = x - 1;
-                }
-            }
+        while let Some(next) = drop_sand(pos, &map) {
+            pos = next;
+        }
+
+        map[pos.1][pos.0] = true;
+        result += 1;
+
+        if pos.1 == 0 {
+            return result;
         }
     }
 }
