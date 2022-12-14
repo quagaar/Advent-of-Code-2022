@@ -52,13 +52,13 @@ fn parse_number(src: &str) -> (PacketData, &str) {
     }
 }
 
-fn main() {
+fn solve(input: &str) -> usize {
     let dividers = [
         PacketData::List(vec![PacketData::List(vec![PacketData::Number(2)])]),
         PacketData::List(vec![PacketData::List(vec![PacketData::Number(6)])]),
     ];
 
-    let mut packets: Vec<PacketData> = include_str!("input.txt")
+    let mut packets: Vec<PacketData> = input
         .lines()
         .filter(|s| !s.is_empty())
         .map(|s| parse_data(s).0)
@@ -67,12 +67,26 @@ fn main() {
 
     packets.sort();
 
-    let result: usize = packets
+    return packets
         .iter()
         .enumerate()
         .filter(|(_, packet)| **packet == dividers[0] || **packet == dividers[1])
         .map(|(i, _)| i + 1)
         .product();
+}
 
+fn main() {
+    let result = solve(include_str!("input.txt"));
     println!("{:?}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(140, result);
+    }
 }

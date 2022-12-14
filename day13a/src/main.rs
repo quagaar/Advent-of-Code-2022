@@ -52,8 +52,8 @@ fn parse_number(src: &str) -> (PacketData, &str) {
     }
 }
 
-fn main() {
-    let packets: Vec<(PacketData, PacketData)> = include_str!("input.txt")
+fn solve(input: &str) -> usize {
+    let packets: Vec<(PacketData, PacketData)> = input
         .split("\n\n")
         .map(|s| {
             let mut packets = s.lines().map(parse_data);
@@ -67,11 +67,25 @@ fn main() {
         .map(|(i, (left, right))| (i + 1, left.cmp(right)))
         .collect();
 
-    let result: usize = order
+    return order
         .iter()
         .filter(|(_, ord)| *ord == Ordering::Less)
         .map(|(i, _)| i)
         .sum();
+}
 
+fn main() {
+    let result = solve(include_str!("input.txt"));
     println!("{:?}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(13, result);
+    }
 }
