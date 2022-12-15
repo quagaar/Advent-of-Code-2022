@@ -1,9 +1,23 @@
-fn main() {
-    let result = include_str!("input.txt")
+fn solve(input: &str) -> i32 {
+    input
         .split("\n\n")
-        .map(|x| x.lines().map(|x| x.parse::<i32>().unwrap()).sum::<i32>())
+        .map(|elf| elf.lines().map(|item| item.parse::<i32>().unwrap()).sum())
         .max()
-        .unwrap();
+        .unwrap()
+}
 
+fn main() {
+    let result = solve(include_str!("input.txt"));
     println!("{}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(24000, result);
+    }
 }
