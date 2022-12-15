@@ -46,13 +46,27 @@ fn get_priority(item_type: char) -> i32 {
     }
 }
 
-fn main() {
-    let result = include_str!("input.txt")
+fn solve(input: &str) -> i32 {
+    input
         .lines()
         .group_elves()
         .map(get_group_badge)
         .map(get_priority)
-        .sum::<i32>();
+        .sum()
+}
 
+fn main() {
+    let result = solve(include_str!("input.txt"));
     println!("{}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(70, result);
+    }
 }

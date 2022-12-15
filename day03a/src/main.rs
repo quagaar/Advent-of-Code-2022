@@ -22,13 +22,27 @@ fn get_priority(item_type: char) -> i32 {
     }
 }
 
-fn main() {
-    let result = include_str!("input.txt")
+fn solve(input: &str) -> i32 {
+    input
         .lines()
         .map(split_compartments)
         .map(get_common_item_type)
         .map(get_priority)
-        .sum::<i32>();
+        .sum()
+}
 
+fn main() {
+    let result = solve(include_str!("input.txt"));
     println!("{}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(157, result);
+    }
 }
