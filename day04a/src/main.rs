@@ -16,12 +16,22 @@ fn fully_overlap((a, b): &(RangeInclusive<i32>, RangeInclusive<i32>)) -> bool {
     (a.contains(b.start()) && a.contains(b.end())) || (b.contains(a.start()) && b.contains(a.end()))
 }
 
-fn main() {
-    let result = include_str!("input.txt")
-        .lines()
-        .map(get_ranges)
-        .filter(fully_overlap)
-        .count();
+fn solve(input: &str) -> usize {
+    input.lines().map(get_ranges).filter(fully_overlap).count()
+}
 
+fn main() {
+    let result = solve(include_str!("input.txt"));
     println!("{}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(2, result);
+    }
 }
