@@ -50,14 +50,14 @@ fn solve(input: &str, target_range: RangeInclusive<i64>) -> i64 {
     let pos = sensors
         .iter()
         .map(|sensor| {
-            (0..sensor.beacon_distance)
+            (0..=sensor.beacon_distance)
                 .map(|i| {
-                    let offset = sensor.beacon_distance + 1;
+                    let offset = sensor.beacon_distance + 1 - i;
                     [
-                        (sensor.position.0 + i, sensor.position.1 + offset - i),
-                        (sensor.position.0 + offset - i, sensor.position.1 - i),
-                        (sensor.position.0 - i, sensor.position.1 - offset + i),
-                        (sensor.position.0 - offset + i, sensor.position.1 + i),
+                        (sensor.position.0 + i, sensor.position.1 + offset),
+                        (sensor.position.0 + offset, sensor.position.1 - i),
+                        (sensor.position.0 - i, sensor.position.1 - offset),
+                        (sensor.position.0 - offset, sensor.position.1 + i),
                     ]
                 })
                 .flatten()
