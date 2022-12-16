@@ -40,14 +40,14 @@ struct State {
 
 impl Ord for State {
     fn cmp(&self, other: &Self) -> Ordering {
-        (self.pressure + self.potential)
-            .cmp(&(other.pressure + other.potential))
-            .then_with(|| self.minute.cmp(&other.minute))
-
-        // self.pressure
-        //     .cmp(&other.pressure)
-        //     .then_with(|| self.potential.cmp(&other.potential))
+        // (self.pressure + self.potential)
+        //     .cmp(&(other.pressure + other.potential))
         //     .then_with(|| self.minute.cmp(&other.minute))
+
+        self.pressure
+            .cmp(&other.pressure)
+            .then_with(|| self.potential.cmp(&other.potential))
+            .then_with(|| self.minute.cmp(&other.minute))
     }
 }
 
@@ -59,94 +59,154 @@ impl PartialOrd for State {
 
 struct Solver {
     valves: HashMap<String, Valve>,
+    useable_valves: Vec<String>,
+    paths: HashMap<String, HashMap<String, i32>>,
+}
+
+const TIME_AVAILABLE: i32 = 30;
+
+fn shortest_path(v1: &String, v2: &String, valves: &HashMap<String, Valve>) -> Option<i32> {
+    #[derive(Clone, Eq, PartialEq)]
+    struct State {
+        distance: i32,
+        node: String,
+    }
+
+    impl Ord for State {
+        fn cmp(&self, other: &Self) -> Ordering {
+            other.distance.cmp(&self.distance)
+        }
+    }
+
+    impl PartialOrd for State {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
+    let mut heap = BinaryHeap::new();
+    heap.push(State {
+        distance: 0,
+        node: v1.clone(),
+    });
+
+    let mut visited: HashMap<String, bool> = HashMap::new();
+
+    while let Some(State { distance, node }) = heap.pop() {
+        if node == *v2 {
+            return Some(distance);
+        }
+
+        if let Some(valve) = valves.get(&node) {
+            for next in valve.links.iter() {
+                if let None = visited.get(next) {
+                    visited.insert(next.clone(), true);
+                    heap.push(State {
+                        distance: distance + 1,
+                        node: next.clone(),
+                    });
+                }
+            }
+        }
+    }
+
+    None
 }
 
 impl Solver {
     fn from(input: &str) -> Solver {
-        Solver {
-            valves: input
-                .lines()
-                .map(Valve::from)
-                .map(|v| (v.label.clone(), v))
-                .collect(),
-        }
-    }
+        let valves: HashMap<String, Valve> = input
+            .lines()
+            .map(Valve::from)
+            .map(|v| (v.label.clone(), v))
+            .collect();
 
-    fn get_usable_valves(&self) -> Vec<String> {
-        let mut usable = self
-            .valves
+        let mut useable_valves = valves
             .iter()
             .filter(|v| v.1.flow_rate > 0)
             .map(|v| v.1)
             .collect::<Vec<_>>();
-        usable.sort_by_key(|v| v.flow_rate);
-        usable.into_iter().rev().map(|v| v.label.clone()).collect()
+        useable_valves.sort_by_key(|v| v.flow_rate);
+        let useable_valves = useable_valves
+            .into_iter()
+            .rev()
+            .map(|v| v.label.clone())
+            .collect::<Vec<_>>();
+
+        let mut paths: HashMap<String, HashMap<String, i32>> = HashMap::new();
+        for (i, v1) in useable_valves.iter().enumerate() {
+            for v2 in useable_valves.iter().skip(i + 1) {
+                let distance = shortest_path(v1, v2, &valves).unwrap();
+                paths
+                    .entry(v1.clone())
+                    .or_default()
+                    .insert(v2.clone(), distance);
+                paths
+                    .entry(v2.clone())
+                    .or_default()
+                    .insert(v1.clone(), distance);
+            }
+        }
+
+        Solver {
+            valves,
+            useable_valves,
+            paths,
+        }
     }
 
     fn get_potential(&self, minute: i32, inactive: &Vec<String>) -> i32 {
         inactive
             .iter()
-            .enumerate()
-            .map(|(i, v)| self.valves.get(v).unwrap().flow_rate * (30 - minute - (2 * i) as i32))
+            .map(|v| self.valves.get(v).unwrap().flow_rate * (TIME_AVAILABLE - minute))
             .sum::<i32>()
     }
 
     fn solve(&self) -> i32 {
-        let useable_valves: Vec<String> = self.get_usable_valves();
-
         let mut result = 0;
         let mut heap = BinaryHeap::new();
-        heap.push(State {
-            pressure: 0,
-            potential: self.get_potential(0, &useable_valves),
-            minute: 0,
-            valve: String::from("AA"),
-            inactive: useable_valves,
-        });
+
+        let start = String::from("AA");
+        for valve in self.useable_valves.iter() {
+            let distance = shortest_path(&start, valve, &self.valves).unwrap();
+            heap.push(State {
+                pressure: 0,
+                potential: self.get_potential(distance, &self.useable_valves),
+                minute: distance,
+                valve: valve.clone(),
+                inactive: self.useable_valves.clone(),
+            });
+        }
 
         while let Some(mut state) = heap.pop() {
-            if state.minute == 29 {
-                if result < state.pressure {
+            state.minute += 1;
+            if state.minute < TIME_AVAILABLE && result < state.pressure + state.potential {
+                let valve = self.valves.get(&state.valve).unwrap();
+                state.pressure += valve.flow_rate * (TIME_AVAILABLE - state.minute);
+                if state.pressure > result {
                     result = state.pressure;
                 }
-            }
-            if state.minute < 29 && result < state.pressure + state.potential {
-                state.minute += 1;
-                let valve = self.valves.get(&state.valve).unwrap();
 
-                let potential = self.get_potential(state.minute + 1, &state.inactive);
-                if result < state.pressure + potential
-                    && (state.inactive.len() > 1 || !state.inactive.contains(&state.valve))
-                {
-                    heap.extend(valve.links.iter().map(|v| State {
-                        pressure: state.pressure,
-                        potential: potential,
-                        minute: state.minute,
-                        valve: v.clone(),
-                        inactive: state.inactive.clone(),
-                    }));
-                }
-
-                if let Some(index) = state
+                let index = state
                     .inactive
                     .iter()
                     .enumerate()
                     .find(|(_, v)| **v == state.valve)
                     .map(|(i, _)| i)
-                {
-                    state.pressure += valve.flow_rate * (30 - state.minute);
-                    state.inactive.remove(index);
-                    if state.inactive.is_empty() {
-                        if state.pressure > result {
-                            result = state.pressure;
-                        }
-                    } else {
-                        state.potential = self.get_potential(state.minute + 2, &state.inactive);
-                        if result < state.pressure + state.potential {
-                            heap.push(state);
-                        }
+                    .unwrap();
+                state.inactive.remove(index);
+
+                let next_path = self.paths.get(&state.valve).unwrap();
+                heap.extend(state.inactive.iter().map(|valve| {
+                    let distance = next_path.get(valve).unwrap();
+                    State {
+                        pressure: state.pressure,
+                        potential: self.get_potential(state.minute + distance, &state.inactive),
+                        minute: state.minute + distance,
+                        valve: valve.clone(),
+                        inactive: state.inactive.clone(),
                     }
-                }
+                }));
             }
         }
 
