@@ -1,14 +1,11 @@
 fn build_stacks(desc: &str) -> Vec<Vec<char>> {
     let mut lines = desc.lines().rev();
-    let labels = lines.next().unwrap().trim().split_whitespace();
+    let columns = lines.next().unwrap().trim().split_whitespace().count();
 
-    let mut result: Vec<Vec<char>> = vec![];
-    for _ in labels {
-        result.push(vec![])
-    }
+    let mut result: Vec<Vec<char>> = vec![vec![]; columns];
 
     for line in lines {
-        for index in 0..result.len() {
+        for index in 0..columns {
             if let Some(ch) = line.chars().nth(index * 4 + 1) {
                 if !ch.is_whitespace() {
                     result[index].push(ch);
@@ -37,14 +34,28 @@ fn move_stacks(stacks: &mut Vec<Vec<char>>, moves: &str) {
     }
 }
 
-fn main() {
-    let (stacks, moves) = include_str!("input.txt").split_once("\n\n").unwrap();
+fn solve(input: &str) -> String {
+    let (stacks, moves) = input.split_once("\n\n").unwrap();
 
     let mut stacks = build_stacks(stacks);
 
     move_stacks(&mut stacks, moves);
 
-    let result = String::from_iter(stacks.iter().map(|v| v.last().unwrap()));
+    String::from_iter(stacks.iter().map(|v| v.last().unwrap()))
+}
 
+fn main() {
+    let result = solve(include_str!("input.txt"));
     println!("{}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!("CMZ", result);
+    }
 }
