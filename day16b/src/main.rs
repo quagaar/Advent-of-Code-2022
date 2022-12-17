@@ -77,6 +77,7 @@ struct Solver {
     valves: HashMap<String, Valve>,
     useable_valves: Vec<String>,
     paths: HashMap<String, HashMap<String, i32>>,
+    min_distance: i32,
 }
 
 const TIME_AVAILABLE: i32 = 26;
@@ -164,10 +165,17 @@ impl Solver {
             }
         }
 
+        let min_distance = *paths
+            .iter()
+            .flat_map(|(_, path)| path.iter().map(|(_, d)| d))
+            .min()
+            .unwrap();
+
         Solver {
             valves,
             useable_valves,
             paths,
+            min_distance,
         }
     }
 
@@ -175,11 +183,30 @@ impl Solver {
         inactive
             .iter()
             .enumerate()
-            .map(|(i, v)| {
-                self.valves.get(v).unwrap().flow_rate
-                    * (TIME_AVAILABLE - minute - (2 * (i / 2)) as i32)
+            .flat_map(|(i, v)| {
+                let steps = (i / 2) as i32;
+                let distance = (self.min_distance + 1) * steps;
+                let multiplier = TIME_AVAILABLE - minute - distance;
+                if multiplier > 0 {
+                    Some(self.valves.get(v).unwrap().flow_rate * multiplier)
+                } else {
+                    None
+                }
             })
-            .sum::<i32>()
+            .sum()
+    }
+
+    fn state_is_in_play(&self, state: &State, result: i32) -> bool {
+        state.minute < TIME_AVAILABLE - 1 && result < (state.pressure + state.potential)
+    }
+
+    fn next_state_option(&self, result: i32, mut state: State) -> Option<State> {
+        state.potential = self.get_potential(state.minute, &state.inactive);
+        if self.state_is_in_play(&state, result) {
+            Some(state)
+        } else {
+            None
+        }
     }
 
     fn solve(&self) -> i32 {
@@ -210,8 +237,9 @@ impl Solver {
         }
 
         while let Some(mut state) = heap.pop() {
-            state.minute += 1;
-            if state.minute < TIME_AVAILABLE && result < (state.pressure + state.potential) {
+            if self.state_is_in_play(&state, result) {
+                state.minute += 1;
+
                 if state.p_distance == 0 {
                     let p_valve = self.valves.get(&state.p_valve).unwrap();
                     state.pressure += p_valve.flow_rate * (TIME_AVAILABLE - state.minute);
@@ -242,40 +270,44 @@ impl Solver {
                                 let &p_distance = p_paths.get(valve).unwrap();
                                 let &e_distance = e_paths.get(valve).unwrap();
                                 let distance = p_distance.min(e_distance);
-                                heap.push(State {
-                                    pressure: state.pressure,
-                                    potential: self
-                                        .get_potential(state.minute + distance, &state.inactive),
-                                    minute: state.minute + distance,
-                                    p_valve: valve.clone(),
-                                    p_distance: p_distance - distance,
-                                    e_valve: valve.clone(),
-                                    e_distance: e_distance - distance,
-                                    inactive: state.inactive.clone(),
-                                });
+                                if let Some(new_state) = self.next_state_option(
+                                    result,
+                                    State {
+                                        pressure: state.pressure,
+                                        potential: 0,
+                                        minute: state.minute + distance,
+                                        p_valve: valve.clone(),
+                                        p_distance: p_distance - distance,
+                                        e_valve: valve.clone(),
+                                        e_distance: e_distance - distance,
+                                        inactive: state.inactive.clone(),
+                                    },
+                                ) {
+                                    heap.push(new_state);
+                                }
                             } else {
                                 heap.extend(state.inactive.iter().flat_map(|p_valve| {
                                     state
                                         .inactive
                                         .iter()
                                         .filter(|e_valve| p_valve.ne(*e_valve))
-                                        .map(|e_valve| {
+                                        .filter_map(|e_valve| {
                                             let &p_distance = p_paths.get(p_valve).unwrap();
                                             let &e_distance = e_paths.get(e_valve).unwrap();
                                             let distance = p_distance.min(e_distance);
-                                            State {
-                                                pressure: state.pressure,
-                                                potential: self.get_potential(
-                                                    state.minute + distance,
-                                                    &state.inactive,
-                                                ),
-                                                minute: state.minute + distance,
-                                                p_valve: p_valve.clone(),
-                                                p_distance: p_distance - distance,
-                                                e_valve: e_valve.clone(),
-                                                e_distance: e_distance - distance,
-                                                inactive: state.inactive.clone(),
-                                            }
+                                            self.next_state_option(
+                                                result,
+                                                State {
+                                                    pressure: state.pressure,
+                                                    potential: 0,
+                                                    minute: state.minute + distance,
+                                                    p_valve: p_valve.clone(),
+                                                    p_distance: p_distance - distance,
+                                                    e_valve: e_valve.clone(),
+                                                    e_distance: e_distance - distance,
+                                                    inactive: state.inactive.clone(),
+                                                },
+                                            )
                                         })
                                 }));
                             }
@@ -294,22 +326,22 @@ impl Solver {
                                         .inactive
                                         .iter()
                                         .filter(|p_valve| state.e_valve.ne(*p_valve))
-                                        .map(|p_valve| {
+                                        .filter_map(|p_valve| {
                                             let &p_distance = p_paths.get(p_valve).unwrap();
                                             let distance = p_distance.min(state.e_distance);
-                                            State {
-                                                pressure: state.pressure,
-                                                potential: self.get_potential(
-                                                    state.minute + distance,
-                                                    &state.inactive,
-                                                ),
-                                                minute: state.minute + distance,
-                                                p_valve: p_valve.clone(),
-                                                p_distance: p_distance - distance,
-                                                e_valve: state.e_valve.clone(),
-                                                e_distance: state.e_distance - distance,
-                                                inactive: state.inactive.clone(),
-                                            }
+                                            self.next_state_option(
+                                                result,
+                                                State {
+                                                    pressure: state.pressure,
+                                                    potential: 0,
+                                                    minute: state.minute + distance,
+                                                    p_valve: p_valve.clone(),
+                                                    p_distance: p_distance - distance,
+                                                    e_valve: state.e_valve.clone(),
+                                                    e_distance: state.e_distance - distance,
+                                                    inactive: state.inactive.clone(),
+                                                },
+                                            )
                                         }),
                                 );
                             }
@@ -328,22 +360,22 @@ impl Solver {
                                         .inactive
                                         .iter()
                                         .filter(|e_valve| state.p_valve.ne(*e_valve))
-                                        .map(|e_valve| {
+                                        .filter_map(|e_valve| {
                                             let &e_distance = e_paths.get(e_valve).unwrap();
                                             let distance = e_distance.min(state.p_distance);
-                                            State {
-                                                pressure: state.pressure,
-                                                potential: self.get_potential(
-                                                    state.minute + distance,
-                                                    &state.inactive,
-                                                ),
-                                                minute: state.minute + distance,
-                                                p_valve: state.p_valve.clone(),
-                                                p_distance: state.p_distance - distance,
-                                                e_valve: e_valve.clone(),
-                                                e_distance: e_distance - distance,
-                                                inactive: state.inactive.clone(),
-                                            }
+                                            self.next_state_option(
+                                                result,
+                                                State {
+                                                    pressure: state.pressure,
+                                                    potential: 0,
+                                                    minute: state.minute + distance,
+                                                    p_valve: state.p_valve.clone(),
+                                                    p_distance: state.p_distance - distance,
+                                                    e_valve: e_valve.clone(),
+                                                    e_distance: e_distance - distance,
+                                                    inactive: state.inactive.clone(),
+                                                },
+                                            )
                                         }),
                                 );
                             }
@@ -358,14 +390,9 @@ impl Solver {
     }
 }
 
-fn solve(input: &str) -> i32 {
-    let solver = Solver::from(input);
-    return solver.solve();
-}
-
 fn main() {
-    let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    let solver = Solver::from(include_str!("input.txt"));
+    println!("{:?}", solver.solve());
 }
 
 #[cfg(test)]
@@ -374,7 +401,7 @@ mod tests {
 
     #[test]
     fn example_result() {
-        let result = solve(include_str!("example.txt"));
-        assert_eq!(1707, result);
+        let solver = Solver::from(include_str!("example.txt"));
+        assert_eq!(1707, solver.solve());
     }
 }
