@@ -200,7 +200,11 @@ impl Solver {
         state.minute < TIME_AVAILABLE - 1 && result < (state.pressure + state.potential)
     }
 
-    fn next_state_option(&self, result: i32, mut state: State) -> Option<State> {
+    fn potential_state_option(&self, result: i32, mut state: State) -> Option<State> {
+        let distance = state.p_distance.min(state.e_distance);
+        state.minute += distance;
+        state.p_distance -= distance;
+        state.e_distance -= distance;
         state.potential = self.get_potential(state.minute, &state.inactive);
         if self.state_is_in_play(&state, result) {
             Some(state)
@@ -209,10 +213,8 @@ impl Solver {
         }
     }
 
-    fn solve(&self) -> i32 {
-        let mut result = 0;
+    fn create_initial_heap(&self) -> BinaryHeap<State> {
         let mut heap = BinaryHeap::new();
-
         let start = String::from("AA");
         let mut init_valves = self
             .useable_valves
@@ -235,6 +237,111 @@ impl Solver {
                 });
             }
         }
+        return heap;
+    }
+
+    fn add_player_targets(&self, mut state: State, result: i32, heap: &mut BinaryHeap<State>) {
+        let p_paths = self.paths.get(&state.p_valve).unwrap();
+        if state.inactive.len() == 1 {
+            let &p_distance = p_paths.get(&state.e_valve).unwrap();
+            if state.e_distance <= p_distance {
+                state.p_valve.clear();
+                state.p_distance = i32::MAX;
+            } else {
+                state.p_valve = state.e_valve.clone();
+                state.p_distance = p_distance;
+            }
+            if let Some(new_state) = self.potential_state_option(result, state) {
+                heap.push(new_state);
+            }
+        } else {
+            heap.extend(
+                state
+                    .inactive
+                    .iter()
+                    .filter(|p_valve| state.e_valve.ne(*p_valve))
+                    .filter_map(|p_valve| {
+                        let mut new_state = state.clone();
+                        new_state.p_valve = p_valve.clone();
+                        new_state.p_distance = *p_paths.get(p_valve).unwrap();
+                        self.potential_state_option(result, new_state)
+                    }),
+            );
+        }
+    }
+
+    fn add_elephant_targets(&self, mut state: State, result: i32, heap: &mut BinaryHeap<State>) {
+        let e_paths = self.paths.get(&state.e_valve).unwrap();
+        if state.inactive.len() == 1 {
+            let &e_distance = e_paths.get(&state.p_valve).unwrap();
+            if state.p_distance <= e_distance {
+                state.e_valve.clear();
+                state.e_distance = i32::MAX;
+            } else {
+                state.e_valve = state.p_valve.clone();
+                state.e_distance = e_distance;
+            }
+            if let Some(new_state) = self.potential_state_option(result, state) {
+                heap.push(new_state);
+            }
+        } else {
+            heap.extend(
+                state
+                    .inactive
+                    .iter()
+                    .filter(|e_valve| state.p_valve.ne(*e_valve))
+                    .filter_map(|e_valve| {
+                        let mut new_state = state.clone();
+                        new_state.e_valve = e_valve.clone();
+                        new_state.e_distance = *e_paths.get(e_valve).unwrap();
+                        self.potential_state_option(result, new_state)
+                    }),
+            );
+        }
+    }
+
+    fn add_both_targets(&self, mut state: State, result: i32, heap: &mut BinaryHeap<State>) {
+        let p_paths = self.paths.get(&state.p_valve).unwrap();
+        let e_paths = self.paths.get(&state.e_valve).unwrap();
+        if state.inactive.len() == 1 {
+            let valve = state.inactive.get(0).unwrap();
+            let &p_distance = p_paths.get(valve).unwrap();
+            let &e_distance = e_paths.get(valve).unwrap();
+            if p_distance <= e_distance {
+                state.p_valve = valve.clone();
+                state.p_distance = p_distance;
+                state.e_valve.clear();
+                state.e_distance = i32::MAX;
+            } else {
+                state.p_valve.clear();
+                state.p_distance = i32::MAX;
+                state.e_valve = valve.clone();
+                state.e_distance = e_distance;
+            }
+            if let Some(new_state) = self.potential_state_option(result, state) {
+                heap.push(new_state);
+            }
+        } else {
+            heap.extend(state.inactive.iter().flat_map(|p_valve| {
+                state
+                    .inactive
+                    .iter()
+                    .filter(|e_valve| p_valve.ne(*e_valve))
+                    .filter_map(|e_valve| {
+                        let mut new_state = state.clone();
+                        new_state.p_valve = p_valve.clone();
+                        new_state.p_distance = *p_paths.get(p_valve).unwrap();
+                        new_state.e_valve = e_valve.clone();
+                        new_state.e_distance = *e_paths.get(e_valve).unwrap();
+                        self.potential_state_option(result, new_state)
+                    })
+            }));
+        }
+    }
+
+    fn solve(&self) -> i32 {
+        let mut result = 0;
+        let mut heap = self.create_initial_heap();
 
         while let Some(mut state) = heap.pop() {
             if self.state_is_in_play(&state, result) {
@@ -262,131 +369,16 @@ impl Solver {
 
                 if state.inactive.len() > 0 {
                     match (state.p_distance, state.e_distance) {
-                        (-1, -1) => {
-                            let p_paths = self.paths.get(&state.p_valve).unwrap();
-                            let e_paths = self.paths.get(&state.e_valve).unwrap();
-                            if state.inactive.len() == 1 {
-                                let valve = state.inactive.get(0).unwrap();
-                                let &p_distance = p_paths.get(valve).unwrap();
-                                let &e_distance = e_paths.get(valve).unwrap();
-                                let distance = p_distance.min(e_distance);
-                                if let Some(new_state) = self.next_state_option(
-                                    result,
-                                    State {
-                                        pressure: state.pressure,
-                                        potential: 0,
-                                        minute: state.minute + distance,
-                                        p_valve: valve.clone(),
-                                        p_distance: p_distance - distance,
-                                        e_valve: valve.clone(),
-                                        e_distance: e_distance - distance,
-                                        inactive: state.inactive.clone(),
-                                    },
-                                ) {
-                                    heap.push(new_state);
-                                }
-                            } else {
-                                heap.extend(state.inactive.iter().flat_map(|p_valve| {
-                                    state
-                                        .inactive
-                                        .iter()
-                                        .filter(|e_valve| p_valve.ne(*e_valve))
-                                        .filter_map(|e_valve| {
-                                            let &p_distance = p_paths.get(p_valve).unwrap();
-                                            let &e_distance = e_paths.get(e_valve).unwrap();
-                                            let distance = p_distance.min(e_distance);
-                                            self.next_state_option(
-                                                result,
-                                                State {
-                                                    pressure: state.pressure,
-                                                    potential: 0,
-                                                    minute: state.minute + distance,
-                                                    p_valve: p_valve.clone(),
-                                                    p_distance: p_distance - distance,
-                                                    e_valve: e_valve.clone(),
-                                                    e_distance: e_distance - distance,
-                                                    inactive: state.inactive.clone(),
-                                                },
-                                            )
-                                        })
-                                }));
-                            }
-                        }
-                        (-1, _) => {
-                            if state.inactive.len() == 1 {
-                                state.minute += state.e_distance;
-                                state.potential = self.get_potential(state.minute, &state.inactive);
-                                state.p_distance = i32::MAX;
-                                state.e_distance = 0;
-                                heap.push(state);
-                            } else {
-                                let p_paths = self.paths.get(&state.p_valve).unwrap();
-                                heap.extend(
-                                    state
-                                        .inactive
-                                        .iter()
-                                        .filter(|p_valve| state.e_valve.ne(*p_valve))
-                                        .filter_map(|p_valve| {
-                                            let &p_distance = p_paths.get(p_valve).unwrap();
-                                            let distance = p_distance.min(state.e_distance);
-                                            self.next_state_option(
-                                                result,
-                                                State {
-                                                    pressure: state.pressure,
-                                                    potential: 0,
-                                                    minute: state.minute + distance,
-                                                    p_valve: p_valve.clone(),
-                                                    p_distance: p_distance - distance,
-                                                    e_valve: state.e_valve.clone(),
-                                                    e_distance: state.e_distance - distance,
-                                                    inactive: state.inactive.clone(),
-                                                },
-                                            )
-                                        }),
-                                );
-                            }
-                        }
-                        (_, -1) => {
-                            if state.inactive.len() == 1 {
-                                state.minute += state.p_distance;
-                                state.potential = self.get_potential(state.minute, &state.inactive);
-                                state.p_distance = 0;
-                                state.e_distance = i32::MAX;
-                                heap.push(state);
-                            } else {
-                                let e_paths = self.paths.get(&state.e_valve).unwrap();
-                                heap.extend(
-                                    state
-                                        .inactive
-                                        .iter()
-                                        .filter(|e_valve| state.p_valve.ne(*e_valve))
-                                        .filter_map(|e_valve| {
-                                            let &e_distance = e_paths.get(e_valve).unwrap();
-                                            let distance = e_distance.min(state.p_distance);
-                                            self.next_state_option(
-                                                result,
-                                                State {
-                                                    pressure: state.pressure,
-                                                    potential: 0,
-                                                    minute: state.minute + distance,
-                                                    p_valve: state.p_valve.clone(),
-                                                    p_distance: state.p_distance - distance,
-                                                    e_valve: e_valve.clone(),
-                                                    e_distance: e_distance - distance,
-                                                    inactive: state.inactive.clone(),
-                                                },
-                                            )
-                                        }),
-                                );
-                            }
-                        }
+                        (-1, -1) => self.add_both_targets(state, result, &mut heap),
+                        (-1, _) => self.add_player_targets(state, result, &mut heap),
+                        (_, -1) => self.add_elephant_targets(state, result, &mut heap),
                         _ => (),
                     }
                 }
             }
         }
 
-        result
+        return result;
     }
 }
 
