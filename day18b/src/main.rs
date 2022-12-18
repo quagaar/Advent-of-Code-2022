@@ -1,11 +1,12 @@
 use std::{collections::HashSet, ops::RangeInclusive};
 
 fn parse_coordinate(line: &str) -> [i32; 3] {
-    let parts = line
-        .split(",")
-        .map(|x| x.parse::<i32>().unwrap())
-        .collect::<Vec<_>>();
-    return [parts[0], parts[1], parts[2]];
+    let mut parts = line.split(",").map(|x| x.parse::<i32>().unwrap());
+    return [
+        parts.next().unwrap(),
+        parts.next().unwrap(),
+        parts.next().unwrap(),
+    ];
 }
 
 fn get_cube_ranges(cubes: &HashSet<[i32; 3]>) -> [RangeInclusive<i32>; 3] {
