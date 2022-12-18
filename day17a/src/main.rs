@@ -45,6 +45,45 @@ fn check_overlap(
     })
 }
 
+fn drop_rock(
+    rock: &Vec<&'static str>,
+    jets_iter: &mut impl Iterator<Item = char>,
+    chamber: &Vec<[char; CHAMBER_WIDTH]>,
+) -> (usize, usize) {
+    let mut pos = (2_usize, chamber.len() - 1);
+    loop {
+        let mut next_pos = pos;
+
+        // Update next pos based on jet, limited by walls
+        let jet = jets_iter.next().unwrap();
+        match jet {
+            '>' => next_pos.0 = (CHAMBER_WIDTH - rock[0].len()).min(next_pos.0 + 1),
+            '<' => next_pos.0 = if pos.0 > 0 { pos.0 - 1 } else { pos.0 },
+            _ => panic!("Unknown jet type: {}", jet),
+        }
+
+        // If jet movement causes overlap then reset next pos, otherwise set pos to next pos
+        if check_overlap(&next_pos, &rock, &chamber) {
+            next_pos = pos;
+        } else {
+            pos = next_pos;
+        }
+
+        // If at floor then stop here
+        if next_pos.1 < rock.len() {
+            return pos;
+        }
+
+        // Drop down one place
+        next_pos.1 -= 1;
+        if check_overlap(&next_pos, &rock, &chamber) {
+            return pos;
+        } else {
+            pos = next_pos;
+        }
+    }
+}
+
 fn add_rock(
     pos: &(usize, usize),
     rock: &Vec<&'static str>,
@@ -66,42 +105,7 @@ fn solve(input: &str) -> usize {
 
     for rock in get_rocks().into_iter().cycle().take(NUMBER_OF_ROCKS) {
         update_chamber_height(&mut chamber, rock.len());
-
-        // drop rock
-        let mut pos = (2_usize, chamber.len() - 1);
-        loop {
-            let mut next_pos = pos;
-
-            // Update next pos based on jet, limited by walls
-            let jet = jets_iter.next().unwrap();
-            match jet {
-                '>' => next_pos.0 = (CHAMBER_WIDTH - rock[0].len()).min(next_pos.0 + 1),
-                '<' => next_pos.0 = if pos.0 > 0 { pos.0 - 1 } else { pos.0 },
-                _ => panic!("Unknown jet type: {}", jet),
-            }
-
-            // If jet movement causes overlap then reset next pos, otherwise set pos to next pos
-            if check_overlap(&next_pos, &rock, &chamber) {
-                next_pos = pos;
-            } else {
-                pos = next_pos;
-            }
-
-            // If at floor then stop here
-            if next_pos.1 < rock.len() {
-                break;
-            }
-
-            // Drop down one place
-            next_pos.1 -= 1;
-            if check_overlap(&next_pos, &rock, &chamber) {
-                break;
-            } else {
-                pos = next_pos;
-            }
-        }
-
-        // add rock to chamber
+        let pos = drop_rock(&rock, &mut jets_iter, &chamber);
         add_rock(&pos, &rock, &mut chamber);
     }
 
