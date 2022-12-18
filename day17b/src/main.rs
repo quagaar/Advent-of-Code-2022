@@ -2,7 +2,7 @@ use std::cell::Cell;
 
 const CHAMBER_WIDTH: usize = 7;
 const NUMBER_OF_ROCKS: usize = 1_000_000_000_000;
-const SAMPLE_SIZE: usize = 1_000_000;
+const SAMPLE_SIZE: usize = 10_000;
 const REPEAT_TEST_WINDOW: usize = 100;
 const EMPTY_ROW: [char; CHAMBER_WIDTH] = [' '; CHAMBER_WIDTH];
 
@@ -103,7 +103,7 @@ fn add_rock(
     })
 }
 
-fn calculate_final_height(end_states: Vec<(usize, usize, usize)>) -> usize {
+fn calculate_final_height(end_states: &Vec<(usize, usize, usize)>) -> Option<usize> {
     let target = end_states
         .iter()
         .rev()
@@ -124,20 +124,24 @@ fn calculate_final_height(end_states: Vec<(usize, usize, usize)>) -> usize {
         .take(2)
         .collect::<Vec<_>>();
 
-    let repeat_rock_count = samples[1].0 - samples[0].0;
-    let remaining_repeats = ((NUMBER_OF_ROCKS - SAMPLE_SIZE) / repeat_rock_count) + 1;
-    let index = NUMBER_OF_ROCKS - (remaining_repeats * repeat_rock_count) - 1;
-    let height_before_repeats = end_states[index].2;
-    let repeat_height = height_before_repeats - end_states[index - repeat_rock_count].2;
+    if samples.len() > 1 {
+        let repeat_rock_count = samples[1].0 - samples[0].0;
+        let remaining_repeats = ((NUMBER_OF_ROCKS - SAMPLE_SIZE) / repeat_rock_count) + 1;
+        let index = NUMBER_OF_ROCKS - (remaining_repeats * repeat_rock_count) - 1;
+        let height_before_repeats = end_states[index].2;
+        let repeat_height = height_before_repeats - end_states[index - repeat_rock_count].2;
 
-    if cfg!(debug_assertions) {
-        println!("repeat rock count => {}", repeat_rock_count);
-        println!("remaining repeats => {}", remaining_repeats);
-        println!("height before repeats => {}", height_before_repeats);
-        println!("repeat height => {}\n", repeat_height);
+        if cfg!(debug_assertions) {
+            println!("repeat rock count => {}", repeat_rock_count);
+            println!("remaining repeats => {}", remaining_repeats);
+            println!("height before repeats => {}", height_before_repeats);
+            println!("repeat height => {}\n", repeat_height);
+        }
+
+        return Some(height_before_repeats + (remaining_repeats * repeat_height));
+    } else {
+        return None;
     }
-
-    return height_before_repeats + (remaining_repeats * repeat_height);
 }
 
 fn solve(input: &str) -> usize {
@@ -154,21 +158,25 @@ fn solve(input: &str) -> usize {
 
     let mut end_states: Vec<(usize, usize, usize)> = vec![];
 
-    for rock in get_rocks().into_iter().cycle().take(SAMPLE_SIZE) {
-        rock_index = (rock_index + 1) % 5;
+    loop {
+        for rock in get_rocks().into_iter().cycle().take(SAMPLE_SIZE) {
+            rock_index = (rock_index + 1) % 5;
 
-        update_chamber_height(&mut chamber, rock.len());
-        let pos = drop_rock(&rock, &mut get_jet, &chamber);
-        add_rock(&pos, &rock, &mut chamber);
+            update_chamber_height(&mut chamber, rock.len());
+            let pos = drop_rock(&rock, &mut get_jet, &chamber);
+            add_rock(&pos, &rock, &mut chamber);
 
-        end_states.push((
-            rock_index,
-            jet_index.get(),
-            chamber.len() - empty_space(&chamber),
-        ));
+            end_states.push((
+                rock_index,
+                jet_index.get(),
+                chamber.len() - empty_space(&chamber),
+            ));
+        }
+
+        if let Some(result) = calculate_final_height(&end_states) {
+            return result;
+        }
     }
-
-    return calculate_final_height(end_states);
 }
 
 fn main() {
