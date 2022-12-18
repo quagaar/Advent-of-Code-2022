@@ -1,4 +1,7 @@
-use std::{collections::HashSet, ops::RangeInclusive};
+use std::{
+    collections::{HashSet, VecDeque},
+    ops::RangeInclusive,
+};
 
 fn parse_coordinate(line: &str) -> [i32; 3] {
     let mut parts = line.split(",").map(|x| x.parse::<i32>().unwrap());
@@ -9,40 +12,49 @@ fn parse_coordinate(line: &str) -> [i32; 3] {
     ];
 }
 
+fn min_max(mut acc: ([i32; 3], [i32; 3]), value: &[i32; 3]) -> ([i32; 3], [i32; 3]) {
+    for axis in 0..=2 {
+        acc.0[axis] = acc.0[axis].min(value[axis]);
+        acc.1[axis] = acc.1[axis].max(value[axis]);
+    }
+    acc
+}
+
 fn get_cube_ranges(cubes: &HashSet<[i32; 3]>) -> [RangeInclusive<i32>; 3] {
-    let min_x = cubes.iter().map(|c| c[0]).min().unwrap();
-    let min_y = cubes.iter().map(|c| c[1]).min().unwrap();
-    let min_z = cubes.iter().map(|c| c[2]).min().unwrap();
+    let mut iter = cubes.iter();
+    let first = iter.next().unwrap();
+    let init = (*first, *first);
+    let limits = iter.fold(init, min_max);
 
-    let max_x = cubes.iter().map(|c| c[0]).max().unwrap();
-    let max_y = cubes.iter().map(|c| c[1]).max().unwrap();
-    let max_z = cubes.iter().map(|c| c[2]).max().unwrap();
-
-    return [min_x..=max_x, min_y..=max_y, min_z..=max_z];
+    return [
+        limits.0[0]..=limits.1[0],
+        limits.0[1]..=limits.1[1],
+        limits.0[2]..=limits.1[2],
+    ];
 }
 
 fn generate_steam(cubes: &HashSet<[i32; 3]>) -> HashSet<[i32; 3]> {
     let cube_ranges = get_cube_ranges(&cubes);
 
     let mut result = HashSet::new();
-    let mut candidates = vec![[
+    let mut candidates = VecDeque::from([[
         cube_ranges[0].start() - 1,
         cube_ranges[1].start() - 1,
         cube_ranges[2].start() - 1,
-    ]];
+    ]]);
 
-    while let Some(pos) = candidates.pop() {
+    while let Some(pos) = candidates.pop_front() {
         if !cubes.contains(&pos) && !result.contains(&pos) {
             for axis in 0..=2 {
                 if pos[axis] >= *cube_ranges[axis].start() {
                     let mut new_pos = pos.clone();
                     new_pos[axis] -= 1;
-                    candidates.push(new_pos);
+                    candidates.push_back(new_pos);
                 }
                 if pos[axis] <= *cube_ranges[axis].end() {
                     let mut new_pos = pos.clone();
                     new_pos[axis] += 1;
-                    candidates.push(new_pos);
+                    candidates.push_back(new_pos);
                 }
             }
             result.insert(pos);
