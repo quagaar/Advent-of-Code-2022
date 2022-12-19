@@ -83,6 +83,13 @@ fn max_geodes(bp: &Blueprint) -> i32 {
             self.potential =
                 self.result + ((TIME_LIMIT - self.minute) * (TIME_LIMIT - 1 - self.minute)) / 2;
         }
+
+        fn robot_score(&self) -> i32 {
+            self.robots[ORE]
+                + (2 * self.robots[CLAY])
+                + (4 * self.robots[OBSIDIAN])
+                + (8 * self.robots[GEODE])
+        }
     }
 
     impl Ord for State {
@@ -99,6 +106,7 @@ fn max_geodes(bp: &Blueprint) -> i32 {
             //     })
             self.result
                 .cmp(&other.result)
+                .then_with(|| self.robot_score().cmp(&other.robot_score()))
                 .then_with(|| match (self.building, other.building) {
                     (Some(l), Some(r)) => l.cmp(&r),
                     (Some(_), None) => Ordering::Greater,
