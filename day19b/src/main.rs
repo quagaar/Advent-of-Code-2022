@@ -1,4 +1,12 @@
-use std::{cmp::Ordering, collections::BinaryHeap, num::ParseIntError, str::FromStr, thread};
+use std::collections::hash_map::Entry::Occupied;
+use std::collections::hash_map::Entry::Vacant;
+use std::{
+    cmp::Ordering,
+    collections::{BinaryHeap, HashMap},
+    num::ParseIntError,
+    str::FromStr,
+    thread,
+};
 
 const ORE: usize = 0;
 const CLAY: usize = 1;
@@ -90,6 +98,18 @@ fn max_geodes(bp: &Blueprint) -> i32 {
                 + (4 * self.robots[OBSIDIAN])
                 + (8 * self.robots[GEODE])
         }
+
+        fn cache_key(&self) -> (i32, [i32; 3], [i32; 4]) {
+            (
+                self.minute,
+                [
+                    self.resources[ORE],
+                    self.resources[CLAY],
+                    self.resources[OBSIDIAN],
+                ],
+                self.robots,
+            )
+        }
     }
 
     impl Ord for State {
@@ -141,6 +161,8 @@ fn max_geodes(bp: &Blueprint) -> i32 {
         potential: i32::MAX,
     });
 
+    let mut state_cache: HashMap<(i32, [i32; 3], [i32; 4]), i32> = HashMap::new();
+
     let mut result = 0;
 
     while let Some(mut state) = heap.pop() {
@@ -152,6 +174,19 @@ fn max_geodes(bp: &Blueprint) -> i32 {
 
         for resource in ORE..=GEODE {
             state.resources[resource] += state.robots[resource];
+        }
+
+        match state_cache.entry(state.cache_key()) {
+            Occupied(mut entry) => {
+                if state.resources[GEODE] <= *entry.get() {
+                    continue;
+                } else {
+                    entry.insert(state.resources[GEODE]);
+                }
+            }
+            Vacant(entry) => {
+                entry.insert(state.resources[GEODE]);
+            }
         }
 
         if state.minute < TIME_LIMIT {
