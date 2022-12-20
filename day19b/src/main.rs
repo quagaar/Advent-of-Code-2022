@@ -176,19 +176,6 @@ fn max_geodes(bp: &Blueprint) -> i32 {
             state.resources[resource] += state.robots[resource];
         }
 
-        match state_cache.entry(state.cache_key()) {
-            Occupied(mut entry) => {
-                if state.resources[GEODE] <= *entry.get() {
-                    continue;
-                } else {
-                    entry.insert(state.resources[GEODE]);
-                }
-            }
-            Vacant(entry) => {
-                entry.insert(state.resources[GEODE]);
-            }
-        }
-
         if state.minute < TIME_LIMIT {
             if let Some(robot) = state.building {
                 state.robots[robot] += 1;
@@ -196,6 +183,19 @@ fn max_geodes(bp: &Blueprint) -> i32 {
                 if robot == GEODE {
                     state.result += TIME_LIMIT - state.minute;
                     result = result.max(state.result);
+                }
+            }
+
+            match state_cache.entry(state.cache_key()) {
+                Occupied(mut entry) => {
+                    if state.result <= *entry.get() {
+                        continue;
+                    } else {
+                        entry.insert(state.result);
+                    }
+                }
+                Vacant(entry) => {
+                    entry.insert(state.result);
                 }
             }
 
