@@ -28,8 +28,8 @@ fn visible_outside(trees: &Vec<&str>, x: usize, y: usize) -> bool {
         .all(|row| row.chars().nth(x).unwrap() < target);
 }
 
-fn main() {
-    let trees: Vec<&str> = include_str!("input.txt").lines().collect();
+fn solve(input: &str) -> usize {
+    let trees: Vec<&str> = input.lines().collect();
 
     let result = trees
         .iter()
@@ -44,5 +44,21 @@ fn main() {
         .filter(|x| *x)
         .count();
 
-    println!("{}", result);
+    return result;
+}
+
+fn main() {
+    let result = solve(include_str!("input.txt"));
+    println!("{:?}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(21, result);
+    }
 }

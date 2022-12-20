@@ -28,8 +28,8 @@ fn scenic_score(trees: &Vec<&str>, x: usize, y: usize) -> usize {
     return before * after * above * below;
 }
 
-fn main() {
-    let trees: Vec<&str> = include_str!("input.txt").lines().collect();
+fn solve(input: &str) -> usize {
+    let trees: Vec<&str> = input.lines().collect();
 
     let result = trees
         .iter()
@@ -44,5 +44,25 @@ fn main() {
         .max()
         .unwrap();
 
-    println!("{} @ x={}, y={}", result.0, result.1, result.2);
+    if cfg!(debug_assertions) {
+        println!("x={}, y={}", result.1, result.2);
+    }
+
+    return result.0;
+}
+
+fn main() {
+    let result = solve(include_str!("input.txt"));
+    println!("{:?}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(8, result);
+    }
 }
