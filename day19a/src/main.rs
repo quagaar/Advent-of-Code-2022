@@ -6,6 +6,7 @@ use std::{
     },
     num::ParseIntError,
     str::FromStr,
+    thread,
 };
 
 const ORE: usize = 0;
@@ -21,6 +22,7 @@ struct RobotRecipe {
     collects: [i32; 4],
 }
 
+#[derive(Clone, Copy)]
 struct Blueprint {
     id: i32,
     robots: [RobotRecipe; 4],
@@ -230,12 +232,36 @@ fn get_quality_level(bp: &Blueprint) -> i32 {
     return bp.id * max_geodes(bp);
 }
 
+fn thread_chunk_size(bp_number: usize) -> usize {
+    let threads = thread::available_parallelism().unwrap();
+    let chunk_size = bp_number / threads;
+    if bp_number % threads == 0 {
+        chunk_size
+    } else {
+        chunk_size + 1
+    }
+}
+
 fn solve(input: &str) -> i32 {
     let blueprints = input
         .lines()
         .map(|line| line.parse().unwrap())
         .collect::<Vec<Blueprint>>();
-    return blueprints.iter().map(get_quality_level).sum();
+
+    let chunks = blueprints
+        .chunks(thread_chunk_size(blueprints.len()))
+        .map(|chunk| chunk.into())
+        .collect::<Vec<Vec<_>>>();
+
+    let handles = chunks
+        .into_iter()
+        .map(|chunk| thread::spawn(move || chunk.iter().map(get_quality_level).sum::<i32>()))
+        .collect::<Vec<_>>();
+
+    return handles
+        .into_iter()
+        .map(|handle| handle.join().unwrap())
+        .sum();
 }
 
 fn main() {
