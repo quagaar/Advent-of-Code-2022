@@ -25,12 +25,12 @@ fn move_tail(head: &(i32, i32), tail: &mut (i32, i32)) {
     }
 }
 
-fn main() {
+fn solve(input: &str) -> usize {
     let mut visited: HashSet<(i32, i32)> = HashSet::new();
     let mut head = (0, 0);
     let mut tail = (0, 0);
 
-    for line in include_str!("input.txt").lines() {
+    for line in input.lines() {
         let (direction, steps) = line.split_once(" ").unwrap();
         let steps: i32 = steps.parse().unwrap();
 
@@ -69,5 +69,21 @@ fn main() {
 
     let result = visited.len();
 
-    println!("{}", result);
+    return result;
+}
+
+fn main() {
+    let result = solve(include_str!("input.txt"));
+    println!("{:?}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(13, result);
+    }
 }

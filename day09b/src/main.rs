@@ -29,11 +29,11 @@ fn print_trail(visited: &HashSet<(i32, i32)>) {
     }
 }
 
-fn main() {
+fn solve(input: &str) -> usize {
     let mut visited: HashSet<(i32, i32)> = HashSet::new();
     let mut rope = vec![(0, 0); 10];
 
-    for line in include_str!("input.txt").lines() {
+    for line in input.lines() {
         let (direction, steps) = line.split_once(" ").unwrap();
         let steps: i32 = steps.parse().unwrap();
 
@@ -52,11 +52,33 @@ fn main() {
         }
     }
 
-    if false {
+    if cfg!(debug_assertions) {
         print_trail(&visited);
     }
 
     let result = visited.len();
 
-    println!("{}", result);
+    return result;
+}
+
+fn main() {
+    let result = solve(include_str!("input.txt"));
+    println!("{:?}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example1_result() {
+        let result = solve(include_str!("example1.txt"));
+        assert_eq!(1, result);
+    }
+
+    #[test]
+    fn example2_result() {
+        let result = solve(include_str!("example2.txt"));
+        assert_eq!(36, result);
+    }
 }
