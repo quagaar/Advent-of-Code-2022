@@ -82,16 +82,31 @@ fn count_small_directories(cwd: &DirectoryEntry) -> usize {
     return result;
 }
 
-fn main() {
+fn solve(input: &str) -> usize {
     let mut root = DirectoryEntry::Directory {
         name: String::from("/"),
         contents: vec![],
     };
-    let mut lines = include_str!("input.txt").lines();
+    let mut lines = input.lines();
     assert_eq!("$ cd /", lines.next().unwrap());
 
     read_input(&mut root, &mut lines);
 
-    let result = count_small_directories(&root);
-    println!("{}", result);
+    return count_small_directories(&root);
+}
+
+fn main() {
+    let result = solve(include_str!("input.txt"));
+    println!("{:?}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(95437, result);
+    }
 }

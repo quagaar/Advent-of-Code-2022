@@ -88,12 +88,12 @@ const TOTAL_SPACE_AVAILABLE: usize = 70000000;
 const REQUIRED_SPACE: usize = 30000000;
 const TARGET_SIZE: usize = TOTAL_SPACE_AVAILABLE - REQUIRED_SPACE;
 
-fn main() {
+fn solve(input: &str) -> usize {
     let mut root = DirectoryEntry::Directory {
         name: String::from("/"),
         contents: vec![],
     };
-    let mut lines = include_str!("input.txt").lines();
+    let mut lines = input.lines();
     assert_eq!("$ cd /", lines.next().unwrap());
 
     read_input(&mut root, &mut lines);
@@ -101,7 +101,21 @@ fn main() {
     let current_usage = root.size();
     let need_to_delete = current_usage - TARGET_SIZE;
 
-    let result = find_directory_to_delete(&root, need_to_delete).unwrap();
+    return find_directory_to_delete(&root, need_to_delete).unwrap();
+}
 
-    println!("{}", result);
+fn main() {
+    let result = solve(include_str!("input.txt"));
+    println!("{:?}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(24933642, result);
+    }
 }
