@@ -102,6 +102,13 @@ impl Cube {
 
     fn right(&self, pos: Location) -> Location {
         let (row, col) = self.net_pos(pos);
+        if pos.column % self.size < self.size - 1 {
+            return Location {
+                row: pos.row,
+                column: pos.column + 1,
+                direction: pos.direction,
+            };
+        }
         let edge = self.net[row][col].unwrap()[0];
         return match edge {
             CubeEdge::Straight(r, c) => Location {
@@ -129,6 +136,13 @@ impl Cube {
 
     fn down(&self, pos: Location) -> Location {
         let (row, col) = self.net_pos(pos);
+        if pos.row % self.size < self.size - 1 {
+            return Location {
+                row: pos.row + 1,
+                column: pos.column,
+                direction: pos.direction,
+            };
+        }
         let edge = self.net[row][col].unwrap()[1];
         return match edge {
             CubeEdge::Straight(r, c) => Location {
@@ -156,6 +170,13 @@ impl Cube {
 
     fn left(&self, pos: Location) -> Location {
         let (row, col) = self.net_pos(pos);
+        if pos.column % self.size > 0 {
+            return Location {
+                row: pos.row,
+                column: pos.column - 1,
+                direction: pos.direction,
+            };
+        }
         let edge = self.net[row][col].unwrap()[2];
         return match edge {
             CubeEdge::Straight(r, c) => Location {
@@ -183,6 +204,13 @@ impl Cube {
 
     fn up(&self, pos: Location) -> Location {
         let (row, col) = self.net_pos(pos);
+        if pos.row % self.size > 0 {
+            return Location {
+                row: pos.row - 1,
+                column: pos.column,
+                direction: pos.direction,
+            };
+        }
         let edge = self.net[row][col].unwrap()[3];
         return match edge {
             CubeEdge::Straight(r, c) => Location {
@@ -229,64 +257,6 @@ fn find_start(map: &Vec<Vec<MapSquare>>) -> Location {
     }
 }
 
-fn find_right(pos: &Location, map: &Vec<Vec<MapSquare>>, cube: &Cube) -> Location {
-    let row = &map[pos.row];
-    return match row.get(pos.column + 1) {
-        Some(MapSquare::Void) | None => cube.right(*pos),
-        Some(_) => Location {
-            row: pos.row,
-            column: pos.column + 1,
-            direction: pos.direction,
-        },
-    };
-}
-
-fn find_down(pos: &Location, map: &Vec<Vec<MapSquare>>, cube: &Cube) -> Location {
-    if let Some(row) = map.get(pos.row + 1) {
-        if let Some(square) = row.get(pos.column) {
-            if *square != MapSquare::Void {
-                return Location {
-                    row: pos.row + 1,
-                    column: pos.column,
-                    direction: pos.direction,
-                };
-            }
-        }
-    }
-    return cube.down(*pos);
-}
-
-fn find_left(pos: &Location, map: &Vec<Vec<MapSquare>>, cube: &Cube) -> Location {
-    let row = &map[pos.row];
-    if pos.column > 0 {
-        if let Some(square) = row.get(pos.column - 1) {
-            if *square != MapSquare::Void {
-                return Location {
-                    row: pos.row,
-                    column: pos.column - 1,
-                    direction: pos.direction,
-                };
-            }
-        }
-    }
-    return cube.left(*pos);
-}
-
-fn find_up(pos: &Location, map: &Vec<Vec<MapSquare>>, cube: &Cube) -> Location {
-    if pos.row > 0 {
-        if let Some(square) = map[pos.row - 1].get(pos.column) {
-            if *square != MapSquare::Void {
-                return Location {
-                    row: pos.row - 1,
-                    column: pos.column,
-                    direction: pos.direction,
-                };
-            }
-        }
-    }
-    return cube.up(*pos);
-}
-
 fn follow_path(path: Vec<PathStep>, map: Vec<Vec<MapSquare>>, cube: Cube) -> Location {
     let mut pos = find_start(&map);
     let mut cache = HashMap::new();
@@ -304,10 +274,10 @@ fn follow_path(path: Vec<PathStep>, map: Vec<Vec<MapSquare>>, cube: Cube) -> Loc
             PathStep::Forward(num) => {
                 for _ in 0..num {
                     let next = match pos.direction {
-                        Direction::Right => find_right(&pos, &map, &cube),
-                        Direction::Down => find_down(&pos, &map, &cube),
-                        Direction::Left => find_left(&pos, &map, &cube),
-                        Direction::Up => find_up(&pos, &map, &cube),
+                        Direction::Right => cube.right(pos),
+                        Direction::Down => cube.down(pos),
+                        Direction::Left => cube.left(pos),
+                        Direction::Up => cube.up(pos),
                     };
                     if map[next.row][next.column] == MapSquare::Open {
                         pos = next;
