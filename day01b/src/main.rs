@@ -1,8 +1,9 @@
+fn total_calories(elf: &str) -> i32 {
+    elf.lines().map(|item| item.parse::<i32>().unwrap()).sum()
+}
+
 fn solve(input: &str) -> i32 {
-    let mut elf_calories: Vec<i32> = input
-        .split("\n\n")
-        .map(|elf| elf.lines().map(|item| item.parse::<i32>().unwrap()).sum())
-        .collect();
+    let mut elf_calories: Vec<i32> = input.split("\n\n").map(total_calories).collect();
 
     elf_calories.sort_unstable_by(|a, b| b.cmp(a));
 
