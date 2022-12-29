@@ -23,4 +23,10 @@ mod tests {
         let result = solve(include_str!("example.txt"));
         assert_eq!(45000, result);
     }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(212117, result);
+    }
 }
