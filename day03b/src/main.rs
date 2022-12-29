@@ -24,18 +24,11 @@ impl<'a> GroupElves<'a> for std::str::Lines<'a> {
 }
 
 fn get_group_badge(elves: [&str; 3]) -> char {
-    for a in elves[0].chars() {
-        for b in elves[1].chars() {
-            if a == b {
-                for c in elves[2].chars() {
-                    if a == c {
-                        return c;
-                    }
-                }
-            }
-        }
-    }
-    panic!("Group badge not found: {:?}", elves)
+    elves[0]
+        .chars()
+        .filter_map(|ch1| elves[1].chars().find(|ch2| ch1.eq(ch2)))
+        .find_map(|ch1| elves[2].chars().find(|ch2| ch1.eq(ch2)))
+        .unwrap_or_else(|| panic!("Group badge not found: {:?}", elves))
 }
 
 fn get_priority(item_type: char) -> i32 {
@@ -68,5 +61,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(70, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(2644, result);
     }
 }

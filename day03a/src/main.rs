@@ -4,14 +4,9 @@ fn split_compartments(line: &str) -> (&str, &str) {
 }
 
 fn get_common_item_type((a, b): (&str, &str)) -> char {
-    for c in a.chars() {
-        for d in b.chars() {
-            if c == d {
-                return c;
-            }
-        }
-    }
-    panic!("Common item type not found: ({}, {})", a, b)
+    a.chars()
+        .find_map(|ch1| b.chars().find(|ch2| ch1.eq(ch2)))
+        .unwrap_or_else(|| panic!("Common item type not found: ({}, {})", a, b))
 }
 
 fn get_priority(item_type: char) -> i32 {
@@ -44,5 +39,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(157, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(7701, result);
     }
 }
