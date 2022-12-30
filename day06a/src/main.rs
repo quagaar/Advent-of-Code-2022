@@ -6,7 +6,7 @@ fn has_duplicates(chars: &&[char]) -> bool {
 }
 
 fn solve(input: &str) -> usize {
-    let chars = input.chars().collect::<Vec<char>>();
+    let chars = input.chars().collect::<Vec<_>>();
     return chars.windows(4).take_while(has_duplicates).count() + 4;
 }
 
@@ -47,5 +47,11 @@ mod tests {
     fn example5_result() {
         let result = solve(include_str!("example5.txt"));
         assert_eq!(11, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(1723, result);
     }
 }
