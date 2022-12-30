@@ -4,19 +4,19 @@ use std::{
 };
 
 fn parse_coordinate(line: &str) -> [i32; 3] {
-    let mut parts = line.split(",").map(|x| x.parse::<i32>().unwrap());
-    return [
+    let mut parts = line.split(',').map(|x| x.parse::<i32>().unwrap());
+    [
         parts.next().unwrap(),
         parts.next().unwrap(),
         parts.next().unwrap(),
-    ];
+    ]
 }
 
 fn min_max(mut acc: ([i32; 3], [i32; 3]), value: &[i32; 3]) -> ([i32; 3], [i32; 3]) {
-    for axis in 0..=2 {
-        acc.0[axis] = acc.0[axis].min(value[axis]);
-        acc.1[axis] = acc.1[axis].max(value[axis]);
-    }
+    value.iter().enumerate().for_each(|(axis, value)| {
+        acc.0[axis] = acc.0[axis].min(*value);
+        acc.1[axis] = acc.1[axis].max(*value);
+    });
     acc
 }
 
@@ -26,15 +26,15 @@ fn get_cube_ranges(cubes: &HashSet<[i32; 3]>) -> [RangeInclusive<i32>; 3] {
     let init = (*first, *first);
     let limits = iter.fold(init, min_max);
 
-    return [
+    [
         limits.0[0]..=limits.1[0],
         limits.0[1]..=limits.1[1],
         limits.0[2]..=limits.1[2],
-    ];
+    ]
 }
 
 fn generate_steam(cubes: &HashSet<[i32; 3]>) -> HashSet<[i32; 3]> {
-    let cube_ranges = get_cube_ranges(&cubes);
+    let cube_ranges = get_cube_ranges(cubes);
 
     let mut result = HashSet::new();
     let mut candidates = VecDeque::from([[
@@ -47,12 +47,12 @@ fn generate_steam(cubes: &HashSet<[i32; 3]>) -> HashSet<[i32; 3]> {
         if !cubes.contains(&pos) && !result.contains(&pos) {
             for axis in 0..=2 {
                 if pos[axis] >= *cube_ranges[axis].start() {
-                    let mut new_pos = pos.clone();
+                    let mut new_pos = pos;
                     new_pos[axis] -= 1;
                     candidates.push_back(new_pos);
                 }
                 if pos[axis] <= *cube_ranges[axis].end() {
-                    let mut new_pos = pos.clone();
+                    let mut new_pos = pos;
                     new_pos[axis] += 1;
                     candidates.push_back(new_pos);
                 }
@@ -61,7 +61,7 @@ fn generate_steam(cubes: &HashSet<[i32; 3]>) -> HashSet<[i32; 3]> {
         }
     }
 
-    return result;
+    result
 }
 
 fn get_exposed_sides(cube: &[i32; 3], steam: &HashSet<[i32; 3]>) -> usize {
@@ -70,7 +70,7 @@ fn get_exposed_sides(cube: &[i32; 3], steam: &HashSet<[i32; 3]>) -> usize {
             [(axis, 1), (axis, -1)]
                 .into_iter()
                 .filter(|(axis, direction)| {
-                    let mut pos = cube.clone();
+                    let mut pos = *cube;
                     pos[*axis] += direction;
                     steam.contains(&pos)
                 })
@@ -85,12 +85,12 @@ fn solve(input: &str) -> usize {
         .iter()
         .map(|cube| get_exposed_sides(cube, &steam))
         .sum();
-    return result;
+    result
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -101,5 +101,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(58, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(2428, result);
     }
 }
