@@ -45,15 +45,15 @@ fn read_input(cwd: &mut DirectoryEntry, lines: &mut Lines) {
                 }
                 str if str.starts_with("dir ") => {
                     let name = &str[4..];
-                    assert!(!contents.iter().any(|x| x.name() == name));
+                    debug_assert!(!contents.iter().any(|x| x.name() == name));
                     contents.push(DirectoryEntry::Directory {
                         name: name.to_string(),
                         contents: vec![],
                     });
                 }
                 str => {
-                    let (size, name) = str.split_once(" ").unwrap();
-                    assert!(!contents.iter().any(|x| x.name() == name));
+                    let (size, name) = str.split_once(' ').unwrap();
+                    debug_assert!(!contents.iter().any(|x| x.name() == name));
                     contents.push(DirectoryEntry::File {
                         name: name.to_string(),
                         size: size.parse().unwrap(),
@@ -73,13 +73,10 @@ fn count_small_directories(cwd: &DirectoryEntry) -> usize {
             result += size;
         }
 
-        result += contents
-            .iter()
-            .map(|x| count_small_directories(x))
-            .sum::<usize>();
+        result += contents.iter().map(count_small_directories).sum::<usize>();
     }
 
-    return result;
+    result
 }
 
 fn solve(input: &str) -> usize {
@@ -92,12 +89,12 @@ fn solve(input: &str) -> usize {
 
     read_input(&mut root, &mut lines);
 
-    return count_small_directories(&root);
+    count_small_directories(&root)
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -108,5 +105,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(95437, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(1886043, result);
     }
 }

@@ -45,15 +45,15 @@ fn read_input(cwd: &mut DirectoryEntry, lines: &mut Lines) {
                 }
                 str if str.starts_with("dir ") => {
                     let name = &str[4..];
-                    assert!(!contents.iter().any(|x| x.name() == name));
+                    debug_assert!(!contents.iter().any(|x| x.name() == name));
                     contents.push(DirectoryEntry::Directory {
                         name: name.to_string(),
                         contents: vec![],
                     });
                 }
                 str => {
-                    let (size, name) = str.split_once(" ").unwrap();
-                    assert!(!contents.iter().any(|x| x.name() == name));
+                    let (size, name) = str.split_once(' ').unwrap();
+                    debug_assert!(!contents.iter().any(|x| x.name() == name));
                     contents.push(DirectoryEntry::File {
                         name: name.to_string(),
                         size: size.parse().unwrap(),
@@ -73,15 +73,14 @@ fn find_directory_to_delete(cwd: &DirectoryEntry, target: usize) -> Option<usize
 
         let result = contents
             .iter()
-            .map(|x| find_directory_to_delete(x, target))
-            .filter_map(|x| x)
+            .filter_map(|x| find_directory_to_delete(x, target))
             .min()
             .unwrap_or(size);
 
         return Some(result);
     }
 
-    return None;
+    None
 }
 
 const TOTAL_SPACE_AVAILABLE: usize = 70000000;
@@ -101,12 +100,12 @@ fn solve(input: &str) -> usize {
     let current_usage = root.size();
     let need_to_delete = current_usage - TARGET_SIZE;
 
-    return find_directory_to_delete(&root, need_to_delete).unwrap();
+    find_directory_to_delete(&root, need_to_delete).unwrap()
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -117,5 +116,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(24933642, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(3842121, result);
     }
 }
