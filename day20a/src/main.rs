@@ -26,17 +26,15 @@ fn solve(input: &str) -> i32 {
         .map(|(i, (_, _))| i)
         .unwrap();
 
-    let result = [1000, 2000, 3000]
+    [1000, 2000, 3000]
         .into_iter()
         .map(|offset| numbers.get((zero_pos + offset) % numbers.len()).unwrap().1)
-        .sum();
-
-    return result;
+        .sum()
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -47,5 +45,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(3, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(3466, result);
     }
 }
