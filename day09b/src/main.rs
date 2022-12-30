@@ -15,10 +15,13 @@ fn move_tail(head: (i32, i32), tail: (i32, i32)) -> (i32, i32) {
 }
 
 fn print_trail(visited: &HashSet<(i32, i32)>) {
-    let x_min = visited.iter().map(|x| x.0).min().unwrap();
-    let x_max = visited.iter().map(|x| x.0).max().unwrap();
-    let y_min = visited.iter().map(|x| x.1).min().unwrap();
-    let y_max = visited.iter().map(|x| x.1).max().unwrap();
+    let mut iter = visited.iter();
+    let (x, y) = iter.next().unwrap();
+    let init = (*x, *x, *y, *y);
+
+    let (x_min, x_max, y_min, y_max) = iter.fold(init, |acc, (x, y)| {
+        (acc.0.min(*x), acc.1.max(*x), acc.2.min(*y), acc.3.max(*y))
+    });
 
     for y in (y_min..=y_max).rev() {
         let mut row = String::new();
@@ -34,7 +37,7 @@ fn solve(input: &str) -> usize {
     let mut rope = vec![(0, 0); 10];
 
     for line in input.lines() {
-        let (direction, steps) = line.split_once(" ").unwrap();
+        let (direction, steps) = line.split_once(' ').unwrap();
         let steps: i32 = steps.parse().unwrap();
 
         for _ in 0..steps {
@@ -56,14 +59,12 @@ fn solve(input: &str) -> usize {
         print_trail(&visited);
     }
 
-    let result = visited.len();
-
-    return result;
+    visited.len()
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -80,5 +81,11 @@ mod tests {
     fn example2_result() {
         let result = solve(include_str!("example2.txt"));
         assert_eq!(36, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(2562, result);
     }
 }

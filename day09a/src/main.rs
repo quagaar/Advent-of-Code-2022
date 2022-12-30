@@ -1,27 +1,12 @@
 use std::collections::HashSet;
 
-fn move_tail(head: &(i32, i32), tail: &mut (i32, i32)) {
-    match head.0 - tail.0 {
-        2 => {
-            tail.0 += 1;
-            tail.1 = head.1;
-        }
-        -2 => {
-            tail.0 -= 1;
-            tail.1 = head.1;
-        }
-        _ => (),
-    }
-    match head.1 - tail.1 {
-        2 => {
-            tail.1 += 1;
-            tail.0 = head.0;
-        }
-        -2 => {
-            tail.1 -= 1;
-            tail.0 = head.0;
-        }
-        _ => (),
+fn move_tail(head: (i32, i32), tail: (i32, i32)) -> (i32, i32) {
+    match (head.0 - tail.0, head.1 - tail.1) {
+        (2, _) => (tail.0 + 1, head.1),
+        (-2, _) => (tail.0 - 1, head.1),
+        (_, 2) => (head.0, tail.1 + 1),
+        (_, -2) => (head.0, tail.1 - 1),
+        _ => tail,
     }
 }
 
@@ -31,50 +16,28 @@ fn solve(input: &str) -> usize {
     let mut tail = (0, 0);
 
     for line in input.lines() {
-        let (direction, steps) = line.split_once(" ").unwrap();
+        let (direction, steps) = line.split_once(' ').unwrap();
         let steps: i32 = steps.parse().unwrap();
 
-        match direction {
-            "U" => {
-                for _ in 0..steps {
-                    head.1 += 1;
-                    move_tail(&head, &mut tail);
-                    visited.insert(tail);
-                }
+        for _ in 0..steps {
+            match direction {
+                "U" => head.1 += 1,
+                "D" => head.1 -= 1,
+                "L" => head.0 += 1,
+                "R" => head.0 -= 1,
+                _ => panic!("Unknown direction: {}", line),
             }
-            "D" => {
-                for _ in 0..steps {
-                    head.1 -= 1;
-                    move_tail(&head, &mut tail);
-                    visited.insert(tail);
-                }
-            }
-            "L" => {
-                for _ in 0..steps {
-                    head.0 += 1;
-                    move_tail(&head, &mut tail);
-                    visited.insert(tail);
-                }
-            }
-            "R" => {
-                for _ in 0..steps {
-                    head.0 -= 1;
-                    move_tail(&head, &mut tail);
-                    visited.insert(tail);
-                }
-            }
-            _ => panic!("Unknown direction: {}", line),
+            tail = move_tail(head, tail);
+            visited.insert(tail);
         }
     }
 
-    let result = visited.len();
-
-    return result;
+    visited.len()
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -85,5 +48,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(13, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(6197, result);
     }
 }
