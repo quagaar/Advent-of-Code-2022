@@ -1,5 +1,6 @@
 use std::collections::hash_map::Entry::Occupied;
 use std::collections::hash_map::Entry::Vacant;
+use std::thread::JoinHandle;
 use std::{
     cmp::Ordering,
     collections::{BinaryHeap, HashMap},
@@ -45,13 +46,13 @@ impl FromStr for Blueprint {
         let robots = rest
             .split(" Each ")
             .map(|robot| {
-                let (res_name, rest) = robot.split_once(" ").unwrap();
+                let (res_name, rest) = robot.split_once(' ').unwrap();
                 let resources = rest
                     .trim_start_matches("robot costs ")
-                    .trim_end_matches(".")
+                    .trim_end_matches('.')
                     .split(" and ")
                     .map(|resource| {
-                        let (number, res_type) = resource.split_once(" ").unwrap();
+                        let (number, res_type) = resource.split_once(' ').unwrap();
                         (number.parse::<i32>().unwrap(), res_type)
                     })
                     .fold([0; 4], |mut acc, (number, res_name)| {
@@ -73,7 +74,7 @@ impl FromStr for Blueprint {
     }
 }
 
-fn max_geodes(bp: &Blueprint) -> i32 {
+fn max_geodes(bp: Blueprint) -> i32 {
     #[derive(Clone, Eq, PartialEq)]
     struct State {
         minute: i32,
@@ -200,22 +201,23 @@ fn max_geodes(bp: &Blueprint) -> i32 {
             }
 
             if state.minute < TIME_LIMIT - 1 {
-                for resource in ORE..=GEODE {
-                    if robot_limits[resource] > state.robots[resource] {
-                        let requires = &bp.robots[resource].consumes;
-                        if requires.iter().zip(state.resources).all(|(&l, r)| l <= r) {
-                            let mut new_state = state.clone();
-                            new_state.building = Some(resource);
-                            new_state
-                                .resources
-                                .iter_mut()
-                                .enumerate()
-                                .for_each(|(i, res)| *res -= requires[i]);
-                            new_state.set_potential();
-                            heap.push(new_state);
-                        }
-                    }
-                }
+                (ORE..=GEODE)
+                    .filter(|resource| robot_limits[*resource] > state.robots[*resource])
+                    .map(|resource| (resource, &bp.robots[resource].consumes))
+                    .filter(|(_, requires)| {
+                        requires.iter().zip(state.resources).all(|(&l, r)| l <= r)
+                    })
+                    .for_each(|(resource, requires)| {
+                        let mut new_state = state.clone();
+                        new_state.building = Some(resource);
+                        new_state
+                            .resources
+                            .iter_mut()
+                            .enumerate()
+                            .for_each(|(i, res)| *res -= requires[i]);
+                        new_state.set_potential();
+                        heap.push(new_state);
+                    });
             }
 
             state.set_potential();
@@ -223,30 +225,35 @@ fn max_geodes(bp: &Blueprint) -> i32 {
         }
     }
 
-    return result;
+    result
+}
+
+fn spawn_solver_threads(input: &str) -> Vec<JoinHandle<i32>> {
+    input
+        .lines()
+        .map(|line| line.parse().unwrap())
+        .take(3)
+        .map(|bp| thread::spawn(move || max_geodes(bp)))
+        .collect()
 }
 
 fn solve(input: &str) -> i32 {
-    let blueprints = input
-        .lines()
-        .map(|line| line.parse().unwrap())
-        .collect::<Vec<Blueprint>>();
-
-    let handles = blueprints
-        .into_iter()
-        .take(3)
-        .map(|bp| thread::spawn(move || max_geodes(&bp)))
-        .collect::<Vec<_>>();
-
-    return handles
-        .into_iter()
-        .map(|handle| handle.join().unwrap())
-        .product();
+    match thread::available_parallelism() {
+        Ok(threads) if threads.get() >= 3 => spawn_solver_threads(input)
+            .into_iter()
+            .map(|handle| handle.join().unwrap())
+            .product(),
+        _ => input
+            .lines()
+            .map(|line| line.parse().unwrap())
+            .map(max_geodes)
+            .product(),
+    }
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -257,5 +264,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(56 * 62, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(6000, result);
     }
 }

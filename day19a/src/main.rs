@@ -4,8 +4,9 @@ use std::{
         hash_map::Entry::{Occupied, Vacant},
         BinaryHeap, HashMap,
     },
-    num::ParseIntError,
+    num::{NonZeroUsize, ParseIntError},
     str::FromStr,
+    sync::{mpsc, Arc, Mutex},
     thread,
 };
 
@@ -47,13 +48,13 @@ impl FromStr for Blueprint {
         let robots = rest
             .split(" Each ")
             .map(|robot| {
-                let (res_name, rest) = robot.split_once(" ").unwrap();
+                let (res_name, rest) = robot.split_once(' ').unwrap();
                 let resources = rest
                     .trim_start_matches("robot costs ")
-                    .trim_end_matches(".")
+                    .trim_end_matches('.')
                     .split(" and ")
                     .map(|resource| {
-                        let (number, res_type) = resource.split_once(" ").unwrap();
+                        let (number, res_type) = resource.split_once(' ').unwrap();
                         (number.parse::<i32>().unwrap(), res_type)
                     })
                     .fold([0; 4], |mut acc, (number, res_name)| {
@@ -202,22 +203,23 @@ fn max_geodes(bp: &Blueprint) -> i32 {
             }
 
             if state.minute < TIME_LIMIT - 1 {
-                for resource in ORE..=GEODE {
-                    if robot_limits[resource] > state.robots[resource] {
-                        let requires = &bp.robots[resource].consumes;
-                        if requires.iter().zip(state.resources).all(|(&l, r)| l <= r) {
-                            let mut new_state = state.clone();
-                            new_state.building = Some(resource);
-                            new_state
-                                .resources
-                                .iter_mut()
-                                .enumerate()
-                                .for_each(|(i, res)| *res -= requires[i]);
-                            new_state.set_potential();
-                            heap.push(new_state);
-                        }
-                    }
-                }
+                (ORE..=GEODE)
+                    .filter(|resource| robot_limits[*resource] > state.robots[*resource])
+                    .map(|resource| (resource, &bp.robots[resource].consumes))
+                    .filter(|(_, requires)| {
+                        requires.iter().zip(state.resources).all(|(&l, r)| l <= r)
+                    })
+                    .for_each(|(resource, requires)| {
+                        let mut new_state = state.clone();
+                        new_state.building = Some(resource);
+                        new_state
+                            .resources
+                            .iter_mut()
+                            .enumerate()
+                            .for_each(|(i, res)| *res -= requires[i]);
+                        new_state.set_potential();
+                        heap.push(new_state);
+                    });
             }
 
             state.set_potential();
@@ -225,48 +227,59 @@ fn max_geodes(bp: &Blueprint) -> i32 {
         }
     }
 
-    return result;
+    result
 }
 
-fn get_quality_level(bp: &Blueprint) -> i32 {
-    return bp.id * max_geodes(bp);
+fn get_quality_level(bp: Blueprint) -> i32 {
+    bp.id * max_geodes(&bp)
 }
 
-fn thread_chunk_size(bp_number: usize) -> usize {
-    let threads = thread::available_parallelism().unwrap();
-    let chunk_size = bp_number / threads;
-    if bp_number % threads == 0 {
-        chunk_size
-    } else {
-        chunk_size + 1
-    }
+fn solve_parallel(input: &str, threads: NonZeroUsize) -> i32 {
+    thread::scope(|s| {
+        let (tx, rx) = mpsc::channel();
+
+        let blueprints = Arc::new(Mutex::new(
+            input.lines().map(|line| line.parse::<Blueprint>().unwrap()),
+        ));
+
+        for _ in 0..threads.get() {
+            let tx = tx.clone();
+            let blueprints = blueprints.clone();
+            s.spawn(move || {
+                while let Some(bp) = {
+                    let mut guard = blueprints.lock().unwrap();
+                    let bp = guard.next();
+                    drop(guard);
+                    bp
+                } {
+                    tx.send(get_quality_level(bp)).unwrap();
+                }
+            });
+        }
+
+        drop(tx);
+        rx.into_iter().sum()
+    })
+}
+
+fn solve_serial(input: &str) -> i32 {
+    input
+        .lines()
+        .map(|line| line.parse().unwrap())
+        .map(get_quality_level)
+        .sum()
 }
 
 fn solve(input: &str) -> i32 {
-    let blueprints = input
-        .lines()
-        .map(|line| line.parse().unwrap())
-        .collect::<Vec<Blueprint>>();
-
-    let chunks = blueprints
-        .chunks(thread_chunk_size(blueprints.len()))
-        .map(|chunk| chunk.into())
-        .collect::<Vec<Vec<_>>>();
-
-    let handles = chunks
-        .into_iter()
-        .map(|chunk| thread::spawn(move || chunk.iter().map(get_quality_level).sum::<i32>()))
-        .collect::<Vec<_>>();
-
-    return handles
-        .into_iter()
-        .map(|handle| handle.join().unwrap())
-        .sum();
+    match thread::available_parallelism() {
+        Ok(threads) if threads.get() > 1 => solve_parallel(input, threads),
+        _ => solve_serial(input),
+    }
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -277,5 +290,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(33, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(600, result);
     }
 }
