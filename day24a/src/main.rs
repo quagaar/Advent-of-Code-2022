@@ -64,8 +64,8 @@ impl Valley {
     fn from(input: &str) -> Valley {
         let height = input.lines().count() - 2;
         let width = input.lines().next().unwrap().chars().count() - 2;
-        let entrance_x = input.lines().next().unwrap().find(".").unwrap();
-        let exit_x = input.lines().rev().next().unwrap().find(".").unwrap();
+        let entrance_x = input.lines().next().unwrap().find('.').unwrap();
+        let exit_x = input.lines().rev().next().unwrap().find('.').unwrap();
         return Valley {
             height,
             width,
@@ -102,7 +102,7 @@ impl Valley {
         };
     }
 
-    fn update_blizzards(&self, blizzards: &Vec<Blizzard>) -> Vec<Blizzard> {
+    fn update_blizzards(&self, blizzards: &[Blizzard]) -> Vec<Blizzard> {
         blizzards
             .iter()
             .map(|blizzard| blizzard.next(self.width, self.height))
@@ -124,11 +124,11 @@ impl Valley {
         for b in blizzards {
             grid[b.position.1][b.position.0] += 1;
         }
-        return grid;
+        grid
     }
 }
 
-fn get_next_steps(pos: &(usize, usize), grid: &Vec<Vec<usize>>) -> Vec<(usize, usize)> {
+fn get_next_steps(pos: &(usize, usize), grid: &[Vec<usize>]) -> Vec<(usize, usize)> {
     let mut next_steps = vec![];
 
     if grid[pos.1][pos.0] == 0 {
@@ -148,7 +148,7 @@ fn get_next_steps(pos: &(usize, usize), grid: &Vec<Vec<usize>>) -> Vec<(usize, u
         next_steps.push((pos.0 + 1, pos.1));
     }
 
-    return next_steps;
+    next_steps
 }
 
 fn solve(input: &str) -> usize {
@@ -172,7 +172,7 @@ fn solve(input: &str) -> usize {
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -183,5 +183,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(18, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(322, result);
     }
 }
