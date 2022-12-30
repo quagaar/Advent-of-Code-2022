@@ -22,11 +22,11 @@ impl FromStr for Op {
         if let Ok(number) = s.parse::<i64>() {
             Ok(Op::Num(number))
         } else {
-            let parts = s.split_whitespace().collect::<Vec<_>>();
-            let lhs = parts.get(0).ok_or(OpErr::MissingOperand)?.to_string();
-            let op = parts.get(1).ok_or(OpErr::MissingOperator)?;
-            let rhs = parts.get(2).ok_or(OpErr::MissingOperand)?.to_string();
-            match *op {
+            let mut parts = s.split_whitespace();
+            let lhs = parts.next().ok_or(OpErr::MissingOperand)?.to_string();
+            let op = parts.next().ok_or(OpErr::MissingOperator)?;
+            let rhs = parts.next().ok_or(OpErr::MissingOperand)?.to_string();
+            match op {
                 "+" => Ok(Op::Add(lhs, rhs)),
                 "-" => Ok(Op::Sub(lhs, rhs)),
                 "*" => Ok(Op::Mul(lhs, rhs)),
@@ -49,11 +49,7 @@ fn parse_input(input: &str) -> Result<HashMap<&str, Op>, MonkeyErr> {
         .lines()
         .map(|line| {
             let (name, op) = line.split_once(": ").ok_or(MonkeyErr::MissingColon)?;
-            Ok((
-                name,
-                op.parse::<Op>()
-                    .or_else(|e| Err(MonkeyErr::OperationError(e)))?,
-            ))
+            Ok((name, op.parse::<Op>().map_err(MonkeyErr::OperationError)?))
         })
         .collect()
 }
@@ -70,7 +66,7 @@ fn get_result(target: &str, monkeys: &HashMap<&str, Op>) -> Result<i64, MonkeyEr
 
 fn solve(input: &str) -> Result<i64, MonkeyErr> {
     let monkeys = parse_input(input)?;
-    return get_result("root", &monkeys);
+    get_result("root", &monkeys)
 }
 
 fn main() {
@@ -86,5 +82,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(Ok(152), result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(Ok(85616733059734), result);
     }
 }
