@@ -11,12 +11,12 @@ fn do_cycle(cycles: &mut i32, x: i32, signal_strengths: &mut [i32; 6]) {
     }
 }
 
-fn main() {
+fn solve(input: &str) -> i32 {
     let mut cycles: i32 = 0;
     let mut x: i32 = 1;
     let mut signal_strengths = [0; 6];
 
-    for line in include_str!("input.txt").lines() {
+    for line in input.lines() {
         let parts: Vec<&str> = line.split_whitespace().collect();
         match parts[0] {
             "noop" => {
@@ -31,7 +31,27 @@ fn main() {
         }
     }
 
-    let result: i32 = signal_strengths.iter().sum();
+    signal_strengths.iter().sum()
+}
 
+fn main() {
+    let result = solve(include_str!("input.txt"));
     println!("{}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(13140, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(14320, result);
+    }
 }

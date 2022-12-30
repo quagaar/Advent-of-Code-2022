@@ -12,22 +12,15 @@ fn do_cycle(cycles: &mut usize, x: i32, screen: &mut [[char; 40]; 6]) {
         }
     }
 
-    if column == 39 {
-        println!("{}", String::from_iter(screen[row].iter()));
-    }
-    if screen_cycle == 239 {
-        println!("");
-    }
-
     *cycles += 1;
 }
 
-fn main() {
+fn solve(input: &str) -> Vec<String> {
     let mut cycles: usize = 0;
     let mut x: i32 = 1;
     let mut screen = [['.'; 40]; 6];
 
-    for line in include_str!("input.txt").lines() {
+    for line in input.lines() {
         let parts: Vec<&str> = line.split_whitespace().collect();
         match parts[0] {
             "noop" => {
@@ -40,5 +33,51 @@ fn main() {
             }
             _ => panic!("unexpected op: {}", line),
         }
+    }
+
+    screen
+        .iter()
+        .map(|row| String::from_iter(row.iter()))
+        .collect()
+}
+
+fn main() {
+    let result = solve(include_str!("input.txt"));
+
+    for line in result {
+        println!("{}", line);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        let expected = vec![
+            "##  ##  ##  ##  ##  ##  ##  ##  ##  ##  ",
+            "###   ###   ###   ###   ###   ###   ### ",
+            "####    ####    ####    ####    ####    ",
+            "#####     #####     #####     #####     ",
+            "######      ######      ######      ####",
+            "#######       #######       #######     ",
+        ];
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        let expected = vec![
+            "###   ##  ###  ###  #  #  ##  ###    ## ",
+            "#  # #  # #  # #  # # #  #  # #  #    # ",
+            "#  # #    #  # ###  ##   #  # #  #    # ",
+            "###  #    ###  #  # # #  #### ###     # ",
+            "#    #  # #    #  # # #  #  # #    #  # ",
+            "#     ##  #    ###  #  # #  # #     ##  ",
+        ];
+        assert_eq!(expected, result);
     }
 }
