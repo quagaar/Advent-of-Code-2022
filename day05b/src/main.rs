@@ -1,23 +1,23 @@
 fn build_stacks(desc: &str) -> Vec<Vec<char>> {
     let mut lines = desc.lines().rev();
-    let columns = lines.next().unwrap().trim().split_whitespace().count();
+    let columns = lines.next().unwrap().split_whitespace().count();
 
     let mut result: Vec<Vec<char>> = vec![vec![]; columns];
 
     for line in lines {
-        for index in 0..columns {
+        for (index, column) in result.iter_mut().enumerate() {
             if let Some(ch) = line.chars().nth(index * 4 + 1) {
                 if !ch.is_whitespace() {
-                    result[index].push(ch);
+                    column.push(ch);
                 }
             }
         }
     }
 
-    return result;
+    result
 }
 
-fn move_stacks(stacks: &mut Vec<Vec<char>>, moves: &str) {
+fn move_stacks(stacks: &mut [Vec<char>], moves: &str) {
     for line in moves.lines() {
         let mut parts = line.split_whitespace();
         assert_eq!(Some("move"), parts.next());
@@ -61,5 +61,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!("MCD", result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!("NLCDCLVMQ", result);
     }
 }
