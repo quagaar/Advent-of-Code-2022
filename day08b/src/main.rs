@@ -5,7 +5,7 @@ fn distance(it: impl Iterator<Item = char> + Clone, target: char) -> usize {
     }
 }
 
-fn scenic_score(trees: &Vec<&str>, x: usize, y: usize) -> usize {
+fn scenic_score(trees: &[&str], x: usize, y: usize) -> usize {
     let row = trees[y];
     let target = row.chars().nth(x).unwrap();
     let before = distance(row[..x].chars().rev(), target);
@@ -25,7 +25,7 @@ fn scenic_score(trees: &Vec<&str>, x: usize, y: usize) -> usize {
             .map(|row| row.chars().nth(x).unwrap()),
         target,
     );
-    return before * after * above * below;
+    before * after * above * below
 }
 
 fn solve(input: &str) -> usize {
@@ -34,13 +34,11 @@ fn solve(input: &str) -> usize {
     let result = trees
         .iter()
         .enumerate()
-        .map(|(y, row)| {
-            row.chars()
-                .enumerate()
-                .map(|(x, _)| (scenic_score(&trees, x, y), x, y))
-                .collect::<Vec<(usize, usize, usize)>>()
+        .flat_map(|(y, row)| {
+            (0..row.len())
+                .map(move |x| (x, y))
+                .map(|(x, y)| (scenic_score(&trees, x, y), x, y))
         })
-        .flatten()
         .max()
         .unwrap();
 
@@ -48,12 +46,12 @@ fn solve(input: &str) -> usize {
         println!("x={}, y={}", result.1, result.2);
     }
 
-    return result.0;
+    result.0
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -64,5 +62,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(8, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(268912, result);
     }
 }

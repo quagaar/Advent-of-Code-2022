@@ -31,25 +31,20 @@ fn visible_outside(trees: &Vec<&str>, x: usize, y: usize) -> bool {
 fn solve(input: &str) -> usize {
     let trees: Vec<&str> = input.lines().collect();
 
-    let result = trees
+    trees
         .iter()
         .enumerate()
-        .map(|(y, row)| {
-            row.chars()
-                .enumerate()
-                .map(|(x, _)| visible_outside(&trees, x, y))
-                .collect::<Vec<bool>>()
+        .flat_map(|(y, row)| {
+            (0..row.len())
+                .map(move |x| (x, y))
+                .filter(|(x, y)| visible_outside(&trees, *x, *y))
         })
-        .flatten()
-        .filter(|x| *x)
-        .count();
-
-    return result;
+        .count()
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -60,5 +55,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(21, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(1803, result);
     }
 }
