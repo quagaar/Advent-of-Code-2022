@@ -1,5 +1,4 @@
-use std::cmp::Ordering;
-use std::collections::BinaryHeap;
+use std::collections::VecDeque;
 
 #[derive(Copy, Clone)]
 struct Location {
@@ -9,7 +8,6 @@ struct Location {
 
 #[derive(Clone)]
 struct Map {
-    start: (usize, usize),
     target: (usize, usize),
     locations: Vec<Vec<Location>>,
 }
@@ -54,34 +52,14 @@ fn parse_map(input: &str) -> Map {
                 .collect()
         })
         .collect();
-    Map {
-        start,
-        target,
-        locations,
-    }
+    Map { target, locations }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone)]
 struct State {
     steps: i32,
     height: i32,
     position: (usize, usize),
-}
-
-impl Ord for State {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other
-            .steps
-            .cmp(&self.steps)
-            .then_with(|| self.height.cmp(&other.height))
-            .then_with(|| self.position.cmp(&other.position))
-    }
-}
-
-impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
 }
 
 fn get_neighbours(position: (usize, usize)) -> Vec<(usize, usize)> {
@@ -99,28 +77,28 @@ fn get_neighbours(position: (usize, usize)) -> Vec<(usize, usize)> {
 }
 
 fn shortest_path(mut map: Map) -> Option<i32> {
-    let mut heap = BinaryHeap::new();
-    heap.push(State {
+    let mut queue = VecDeque::new();
+    queue.push_back(State {
         steps: 0,
-        height: 0,
-        position: map.start,
+        height: 25,
+        position: map.target,
     });
 
     while let Some(State {
         steps,
         height,
         position,
-    }) = heap.pop()
+    }) = queue.pop_front()
     {
-        if position == map.target {
+        if height == 0 {
             return Some(steps);
         }
 
         for next in get_neighbours(position) {
             if let Some(location) = map.get_location(next) {
-                if !location.visited && location.height - height <= 1 {
+                if !location.visited && location.height - height >= -1 {
                     location.visited = true;
-                    heap.push(State {
+                    queue.push_back(State {
                         steps: steps + 1,
                         height: location.height,
                         position: next,
@@ -135,20 +113,7 @@ fn shortest_path(mut map: Map) -> Option<i32> {
 
 fn solve(input: &str) -> Option<i32> {
     let map = parse_map(input);
-
-    (0..map.locations.len())
-        .flat_map(|y| {
-            (0..map.locations[y].len())
-                .filter(|&x| map.locations[y][x].height == 0)
-                .map(|x| (x, y))
-                .collect::<Vec<(usize, usize)>>()
-        })
-        .filter_map(|start| {
-            let mut map = map.clone();
-            map.start = start;
-            shortest_path(map)
-        })
-        .min()
+    shortest_path(map)
 }
 
 fn main() {
