@@ -56,7 +56,7 @@ fn parse_path(path: &str) -> Vec<PathStep> {
         let number = digits.parse().unwrap();
         result.push(PathStep::Forward(number));
     }
-    return result;
+    result
 }
 
 #[derive(PartialEq)]
@@ -87,7 +87,7 @@ struct Location {
     direction: Direction,
 }
 
-fn find_start(map: &Vec<Vec<MapSquare>>) -> Location {
+fn find_start(map: &[Vec<MapSquare>]) -> Location {
     Location {
         row: 0,
         column: map[0]
@@ -100,7 +100,7 @@ fn find_start(map: &Vec<Vec<MapSquare>>) -> Location {
     }
 }
 
-fn find_right(pos: &Location, map: &Vec<Vec<MapSquare>>) -> Location {
+fn find_right(pos: &Location, map: &[Vec<MapSquare>]) -> Location {
     let row = &map[pos.row];
     let new_column = match row.get(pos.column + 1) {
         Some(MapSquare::Void) | None => {
@@ -112,14 +112,14 @@ fn find_right(pos: &Location, map: &Vec<Vec<MapSquare>>) -> Location {
         }
         Some(_) => pos.column + 1,
     };
-    return Location {
+    Location {
         row: pos.row,
         column: new_column,
         direction: pos.direction,
-    };
+    }
 }
 
-fn find_down(pos: &Location, map: &Vec<Vec<MapSquare>>) -> Location {
+fn find_down(pos: &Location, map: &[Vec<MapSquare>]) -> Location {
     if let Some(row) = map.get(pos.row + 1) {
         if let Some(square) = row.get(pos.column) {
             if *square != MapSquare::Void {
@@ -134,20 +134,17 @@ fn find_down(pos: &Location, map: &Vec<Vec<MapSquare>>) -> Location {
     let new_row = map
         .iter()
         .enumerate()
-        .find(|(_, row)| match row.get(pos.column) {
-            Some(MapSquare::Void) | None => false,
-            _ => true,
-        })
+        .find(|(_, row)| !matches!(row.get(pos.column), Some(MapSquare::Void) | None))
         .unwrap()
         .0;
-    return Location {
+    Location {
         row: new_row,
         column: pos.column,
         direction: pos.direction,
-    };
+    }
 }
 
-fn find_left(pos: &Location, map: &Vec<Vec<MapSquare>>) -> Location {
+fn find_left(pos: &Location, map: &[Vec<MapSquare>]) -> Location {
     let row = &map[pos.row];
     let new_column = if pos.column > 0 {
         match row.get(pos.column - 1) {
@@ -157,14 +154,14 @@ fn find_left(pos: &Location, map: &Vec<Vec<MapSquare>>) -> Location {
     } else {
         row.len() - 1
     };
-    return Location {
+    Location {
         row: pos.row,
         column: new_column,
         direction: pos.direction,
-    };
+    }
 }
 
-fn find_up(pos: &Location, map: &Vec<Vec<MapSquare>>) -> Location {
+fn find_up(pos: &Location, map: &[Vec<MapSquare>]) -> Location {
     let new_row = if pos.row > 0 {
         pos.row - 1
     } else {
@@ -183,17 +180,14 @@ fn find_up(pos: &Location, map: &Vec<Vec<MapSquare>>) -> Location {
         .iter()
         .enumerate()
         .rev()
-        .find(|(_, row)| match row.get(pos.column) {
-            Some(MapSquare::Void) | None => false,
-            _ => true,
-        })
+        .find(|(_, row)| !matches!(row.get(pos.column), Some(MapSquare::Void) | None))
         .unwrap()
         .0;
-    return Location {
+    Location {
         row: new_row,
         column: pos.column,
         direction: pos.direction,
-    };
+    }
 }
 
 fn follow_path(path: Vec<PathStep>, map: Vec<Vec<MapSquare>>) -> Location {
@@ -219,7 +213,7 @@ fn follow_path(path: Vec<PathStep>, map: Vec<Vec<MapSquare>>) -> Location {
             }
         }
     }
-    return pos;
+    pos
 }
 
 fn solve(input: &str) -> usize {
@@ -227,12 +221,12 @@ fn solve(input: &str) -> usize {
     let map = parse_map(map);
     let path = parse_path(path);
     let end = follow_path(path, map);
-    return 1000 * (end.row + 1) + 4 * (end.column + 1) + end.direction as usize;
+    1000 * (end.row + 1) + 4 * (end.column + 1) + end.direction as usize
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -243,5 +237,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(6032, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(66292, result);
     }
 }

@@ -58,7 +58,7 @@ fn parse_path(path: &str) -> Vec<PathStep> {
         let number = digits.parse().unwrap();
         result.push(PathStep::Forward(number));
     }
-    return result;
+    result
 }
 
 #[derive(PartialEq)]
@@ -110,7 +110,7 @@ impl Cube {
             };
         }
         let edge = self.net[row][col].unwrap()[0];
-        return match edge {
+        match edge {
             CubeEdge::Straight(r, c) => Location {
                 row: r * self.size + pos.row % self.size,
                 column: c * self.size,
@@ -131,7 +131,7 @@ impl Cube {
                 column: (c + 1) * self.size - 1,
                 direction: Direction::Left,
             },
-        };
+        }
     }
 
     fn down(&self, pos: Location) -> Location {
@@ -144,7 +144,7 @@ impl Cube {
             };
         }
         let edge = self.net[row][col].unwrap()[1];
-        return match edge {
+        match edge {
             CubeEdge::Straight(r, c) => Location {
                 row: r * self.size,
                 column: c * self.size + pos.column % self.size,
@@ -165,7 +165,7 @@ impl Cube {
                 column: (c + 1) * self.size - 1 - pos.column % self.size,
                 direction: Direction::Up,
             },
-        };
+        }
     }
 
     fn left(&self, pos: Location) -> Location {
@@ -178,7 +178,7 @@ impl Cube {
             };
         }
         let edge = self.net[row][col].unwrap()[2];
-        return match edge {
+        match edge {
             CubeEdge::Straight(r, c) => Location {
                 row: r * self.size + pos.row % self.size,
                 column: (c + 1) * self.size - 1,
@@ -199,7 +199,7 @@ impl Cube {
                 column: c * self.size,
                 direction: Direction::Right,
             },
-        };
+        }
     }
 
     fn up(&self, pos: Location) -> Location {
@@ -212,7 +212,7 @@ impl Cube {
             };
         }
         let edge = self.net[row][col].unwrap()[3];
-        return match edge {
+        match edge {
             CubeEdge::Straight(r, c) => Location {
                 row: (r + 1) * self.size - 1,
                 column: c * self.size + pos.column % self.size,
@@ -233,7 +233,7 @@ impl Cube {
                 column: (c + 1) * self.size - 1 - pos.column % self.size,
                 direction: Direction::Down,
             },
-        };
+        }
     }
 }
 
@@ -244,7 +244,7 @@ struct Location {
     direction: Direction,
 }
 
-fn find_start(map: &Vec<Vec<MapSquare>>) -> Location {
+fn find_start(map: &[Vec<MapSquare>]) -> Location {
     Location {
         row: 0,
         column: map[0]
@@ -304,10 +304,10 @@ fn follow_path(path: Vec<PathStep>, map: Vec<Vec<MapSquare>>, cube: Cube) -> Loc
                     },
                 }
             }
-            print!("\n");
+            println!();
         }
     }
-    return pos;
+    pos
 }
 
 fn solve(input: &str, cube: Cube) -> usize {
@@ -315,11 +315,11 @@ fn solve(input: &str, cube: Cube) -> usize {
     let map = parse_map(map);
     let path = parse_path(path);
     let end = follow_path(path, map, cube);
-    return 1000 * (end.row + 1) + 4 * (end.column + 1) + end.direction as usize;
+    1000 * (end.row + 1) + 4 * (end.column + 1) + end.direction as usize
 }
 
-fn main() {
-    let cube = Cube {
+fn input_cube() -> Cube {
+    Cube {
         size: 50,
         net: vec![
             vec![
@@ -373,8 +373,11 @@ fn main() {
                 None,
             ],
         ],
-    };
-    let result = solve(include_str!("input.txt"), cube);
+    }
+}
+
+fn main() {
+    let result = solve(include_str!("input.txt"), input_cube());
     println!("{:?}", result);
 }
 
@@ -382,9 +385,8 @@ fn main() {
 mod tests {
     use super::*;
 
-    #[test]
-    fn example_result() {
-        let cube = Cube {
+    fn example_cube() -> Cube {
+        Cube {
             size: 4,
             net: vec![
                 vec![
@@ -436,8 +438,18 @@ mod tests {
                     ]),
                 ],
             ],
-        };
-        let result = solve(include_str!("example.txt"), cube);
+        }
+    }
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"), example_cube());
         assert_eq!(5031, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"), input_cube());
+        assert_eq!(127012, result);
     }
 }
