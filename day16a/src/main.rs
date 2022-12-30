@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    collections::{BinaryHeap, HashMap},
+    collections::{BinaryHeap, HashMap, VecDeque},
 };
 
 struct Valve {
@@ -38,6 +38,12 @@ struct State {
     inactive: Vec<String>,
 }
 
+impl State {
+    fn activate(&mut self, valve: &String) {
+        self.inactive.retain(|v| v != valve);
+    }
+}
+
 impl Ord for State {
     fn cmp(&self, other: &Self) -> Ordering {
         // (self.pressure + self.potential)
@@ -61,49 +67,37 @@ struct Solver {
     valves: HashMap<String, Valve>,
     useable_valves: Vec<String>,
     paths: HashMap<String, HashMap<String, i32>>,
+    min_distance: i32,
 }
 
 const TIME_AVAILABLE: i32 = 30;
 
-fn shortest_path(v1: &String, v2: &String, valves: &HashMap<String, Valve>) -> Option<i32> {
-    #[derive(Clone, Eq, PartialEq)]
-    struct State {
+fn shortest_path(v1: &str, v2: &str, valves: &HashMap<String, Valve>) -> Option<i32> {
+    struct State<'a> {
         distance: i32,
-        node: String,
+        node: &'a str,
     }
 
-    impl Ord for State {
-        fn cmp(&self, other: &Self) -> Ordering {
-            other.distance.cmp(&self.distance)
-        }
-    }
-
-    impl PartialOrd for State {
-        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-            Some(self.cmp(other))
-        }
-    }
-
-    let mut heap = BinaryHeap::new();
-    heap.push(State {
+    let mut queue = VecDeque::new();
+    queue.push_back(State {
         distance: 0,
-        node: v1.clone(),
+        node: v1,
     });
 
-    let mut visited: HashMap<String, bool> = HashMap::new();
+    let mut visited: HashMap<&str, bool> = HashMap::new();
 
-    while let Some(State { distance, node }) = heap.pop() {
-        if node == *v2 {
+    while let Some(State { distance, node }) = queue.pop_front() {
+        if node == v2 {
             return Some(distance);
         }
 
-        if let Some(valve) = valves.get(&node) {
+        if let Some(valve) = valves.get(node) {
             for next in valve.links.iter() {
-                if let None = visited.get(next) {
-                    visited.insert(next.clone(), true);
-                    heap.push(State {
+                if visited.get(next.as_str()).is_none() {
+                    visited.insert(next, true);
+                    queue.push_back(State {
                         distance: distance + 1,
-                        node: next.clone(),
+                        node: next,
                     });
                 }
             }
@@ -148,24 +142,67 @@ impl Solver {
             }
         }
 
+        let min_distance = *paths
+            .iter()
+            .flat_map(|(_, path)| path.iter().map(|(_, d)| d))
+            .min()
+            .unwrap();
+
         Solver {
             valves,
             useable_valves,
             paths,
+            min_distance,
         }
     }
 
-    fn get_potential(&self, minute: i32, inactive: &Vec<String>) -> i32 {
+    fn get_potential(&self, minute: i32, inactive: &[String]) -> i32 {
         inactive
             .iter()
-            .map(|v| self.valves.get(v).unwrap().flow_rate * (TIME_AVAILABLE - minute))
-            .sum::<i32>()
+            .enumerate()
+            .flat_map(|(i, v)| {
+                let distance = (self.min_distance + 1) * i as i32;
+                let multiplier = TIME_AVAILABLE - minute - distance;
+                if multiplier > 0 {
+                    Some(self.valves.get(v).unwrap().flow_rate * multiplier)
+                } else {
+                    None
+                }
+            })
+            .sum()
     }
 
-    fn solve(&self) -> i32 {
-        let mut result = 0;
-        let mut heap = BinaryHeap::new();
+    fn state_is_in_play(&self, state: &State, result: i32) -> bool {
+        state.minute < TIME_AVAILABLE - 1 && result < (state.pressure + state.potential)
+    }
 
+    fn potential_state_option(
+        &self,
+        result: i32,
+        pressure: i32,
+        minute: i32,
+        inactive: &[String],
+        valve: &str,
+        distance: i32,
+    ) -> Option<State> {
+        let minute = minute + distance;
+        if minute < TIME_AVAILABLE - 1 {
+            let potential = self.get_potential(minute, inactive);
+            if result < (pressure + potential) {
+                return Some(State {
+                    pressure,
+                    potential,
+                    minute,
+                    valve: valve.to_owned(),
+                    inactive: inactive.to_owned(),
+                });
+            }
+        }
+        None
+    }
+
+    fn create_initial_heap(&self) -> BinaryHeap<State> {
+        let mut heap = BinaryHeap::new();
         let start = String::from("AA");
         for valve in self.useable_valves.iter() {
             let distance = shortest_path(&start, valve, &self.valves).unwrap();
@@ -178,34 +215,35 @@ impl Solver {
             });
         }
 
+        heap
+    }
+
+    fn solve(&self) -> i32 {
+        let mut result = 0;
+        let mut heap = self.create_initial_heap();
+
         while let Some(mut state) = heap.pop() {
-            state.minute += 1;
-            if state.minute < TIME_AVAILABLE && result < state.pressure + state.potential {
+            if self.state_is_in_play(&state, result) {
+                state.minute += 1;
+
                 let valve = self.valves.get(&state.valve).unwrap();
                 state.pressure += valve.flow_rate * (TIME_AVAILABLE - state.minute);
                 if state.pressure > result {
                     result = state.pressure;
                 }
-
-                let index = state
-                    .inactive
-                    .iter()
-                    .enumerate()
-                    .find(|(_, v)| **v == state.valve)
-                    .map(|(i, _)| i)
-                    .unwrap();
-                state.inactive.remove(index);
+                state.activate(&valve.label);
 
                 let next_path = self.paths.get(&state.valve).unwrap();
-                heap.extend(state.inactive.iter().map(|valve| {
+                heap.extend(state.inactive.iter().filter_map(|valve| {
                     let distance = next_path.get(valve).unwrap();
-                    State {
-                        pressure: state.pressure,
-                        potential: self.get_potential(state.minute + distance, &state.inactive),
-                        minute: state.minute + distance,
-                        valve: valve.clone(),
-                        inactive: state.inactive.clone(),
-                    }
+                    self.potential_state_option(
+                        result,
+                        state.pressure,
+                        state.minute,
+                        &state.inactive,
+                        valve,
+                        *distance,
+                    )
                 }));
             }
         }
@@ -214,14 +252,9 @@ impl Solver {
     }
 }
 
-fn solve(input: &str) -> i32 {
-    let solver = Solver::from(input);
-    return solver.solve();
-}
-
 fn main() {
-    let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    let solver = Solver::from(include_str!("input.txt"));
+    println!("{}", solver.solve());
 }
 
 #[cfg(test)]
@@ -230,7 +263,13 @@ mod tests {
 
     #[test]
     fn example_result() {
-        let result = solve(include_str!("example.txt"));
-        assert_eq!(1651, result);
+        let solver = Solver::from(include_str!("example.txt"));
+        assert_eq!(1651, solver.solve());
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let solver = Solver::from(include_str!("input.txt"));
+        assert_eq!(2183, solver.solve());
     }
 }

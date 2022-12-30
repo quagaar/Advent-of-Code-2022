@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    collections::{BinaryHeap, HashMap},
+    collections::{BinaryHeap, HashMap, VecDeque},
 };
 
 struct Valve {
@@ -43,14 +43,7 @@ struct State {
 
 impl State {
     fn activate(&mut self, valve: &String) {
-        let index = self
-            .inactive
-            .iter()
-            .enumerate()
-            .find(|(_, v)| valve.eq(*v))
-            .map(|(i, _)| i)
-            .unwrap();
-        self.inactive.remove(index);
+        self.inactive.retain(|v| v != valve);
     }
 }
 
@@ -82,45 +75,32 @@ struct Solver {
 
 const TIME_AVAILABLE: i32 = 26;
 
-fn shortest_path(v1: &String, v2: &String, valves: &HashMap<String, Valve>) -> Option<i32> {
-    #[derive(Clone, Eq, PartialEq)]
-    struct State {
+fn shortest_path(v1: &str, v2: &str, valves: &HashMap<String, Valve>) -> Option<i32> {
+    struct State<'a> {
         distance: i32,
-        node: String,
+        node: &'a str,
     }
 
-    impl Ord for State {
-        fn cmp(&self, other: &Self) -> Ordering {
-            other.distance.cmp(&self.distance)
-        }
-    }
-
-    impl PartialOrd for State {
-        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-            Some(self.cmp(other))
-        }
-    }
-
-    let mut heap = BinaryHeap::new();
-    heap.push(State {
+    let mut heap = VecDeque::new();
+    heap.push_back(State {
         distance: 0,
-        node: v1.clone(),
+        node: v1,
     });
 
-    let mut visited: HashMap<String, bool> = HashMap::new();
+    let mut visited: HashMap<&str, bool> = HashMap::new();
 
-    while let Some(State { distance, node }) = heap.pop() {
-        if node == *v2 {
+    while let Some(State { distance, node }) = heap.pop_front() {
+        if node == v2 {
             return Some(distance);
         }
 
-        if let Some(valve) = valves.get(&node) {
+        if let Some(valve) = valves.get(node) {
             for next in valve.links.iter() {
-                if let None = visited.get(next) {
-                    visited.insert(next.clone(), true);
-                    heap.push(State {
+                if visited.get(next.as_str()).is_none() {
+                    visited.insert(next, true);
+                    heap.push_back(State {
                         distance: distance + 1,
-                        node: next.clone(),
+                        node: next,
                     });
                 }
             }
@@ -179,7 +159,7 @@ impl Solver {
         }
     }
 
-    fn get_potential(&self, minute: i32, inactive: &Vec<String>) -> i32 {
+    fn get_potential(&self, minute: i32, inactive: &[String]) -> i32 {
         inactive
             .iter()
             .enumerate()
@@ -200,17 +180,47 @@ impl Solver {
         state.minute < TIME_AVAILABLE - 1 && result < (state.pressure + state.potential)
     }
 
-    fn potential_state_option(&self, result: i32, mut state: State) -> Option<State> {
+    fn potential_state_update(&self, result: i32, mut state: State) -> Option<State> {
         let distance = state.p_distance.min(state.e_distance);
         state.minute += distance;
-        state.p_distance -= distance;
-        state.e_distance -= distance;
-        state.potential = self.get_potential(state.minute, &state.inactive);
-        if self.state_is_in_play(&state, result) {
-            Some(state)
-        } else {
-            None
+        if state.minute < TIME_AVAILABLE - 1 {
+            state.p_distance -= distance;
+            state.e_distance -= distance;
+            state.potential = self.get_potential(state.minute, &state.inactive);
+            if result < (state.pressure + state.potential) {
+                return Some(state);
+            }
         }
+        None
+    }
+
+    fn potential_new_state_option(
+        &self,
+        result: i32,
+        old_state: &State,
+        p_valve: &str,
+        p_distance: i32,
+        e_valve: &str,
+        e_distance: i32,
+    ) -> Option<State> {
+        let distance = p_distance.min(e_distance);
+        let minute = old_state.minute + distance;
+        if minute < TIME_AVAILABLE - 1 {
+            let potential = self.get_potential(minute, &old_state.inactive);
+            if result < (old_state.pressure + potential) {
+                return Some(State {
+                    pressure: old_state.pressure,
+                    potential,
+                    minute,
+                    p_valve: p_valve.to_owned(),
+                    p_distance: p_distance - distance,
+                    e_valve: e_valve.to_owned(),
+                    e_distance: e_distance - distance,
+                    inactive: old_state.inactive.clone(),
+                });
+            }
+        }
+        None
     }
 
     fn create_initial_heap(&self) -> BinaryHeap<State> {
@@ -228,7 +238,7 @@ impl Solver {
                 heap.push(State {
                     pressure: 0,
                     potential: self.get_potential(minute, &self.useable_valves),
-                    minute: minute,
+                    minute,
                     p_valve: p_valve.to_string(),
                     p_distance: p_distance - minute,
                     e_valve: e_valve.to_string(),
@@ -237,7 +247,7 @@ impl Solver {
                 });
             }
         }
-        return heap;
+        heap
     }
 
     fn add_player_targets(&self, mut state: State, result: i32, heap: &mut BinaryHeap<State>) {
@@ -248,10 +258,11 @@ impl Solver {
                 state.p_valve.clear();
                 state.p_distance = i32::MAX;
             } else {
-                state.p_valve = state.e_valve.clone();
+                state.p_valve = state.e_valve;
+                state.e_valve = String::new();
                 state.p_distance = p_distance;
             }
-            if let Some(new_state) = self.potential_state_option(result, state) {
+            if let Some(new_state) = self.potential_state_update(result, state) {
                 heap.push(new_state);
             }
         } else {
@@ -261,10 +272,15 @@ impl Solver {
                     .iter()
                     .filter(|p_valve| state.e_valve.ne(*p_valve))
                     .filter_map(|p_valve| {
-                        let mut new_state = state.clone();
-                        new_state.p_valve = p_valve.clone();
-                        new_state.p_distance = *p_paths.get(p_valve).unwrap();
-                        self.potential_state_option(result, new_state)
+                        let p_distance = p_paths.get(p_valve).unwrap();
+                        self.potential_new_state_option(
+                            result,
+                            &state,
+                            p_valve,
+                            *p_distance,
+                            &state.e_valve,
+                            state.e_distance,
+                        )
                     }),
             );
         }
@@ -278,10 +294,11 @@ impl Solver {
                 state.e_valve.clear();
                 state.e_distance = i32::MAX;
             } else {
-                state.e_valve = state.p_valve.clone();
+                state.e_valve = state.p_valve;
+                state.p_valve = String::new();
                 state.e_distance = e_distance;
             }
-            if let Some(new_state) = self.potential_state_option(result, state) {
+            if let Some(new_state) = self.potential_state_update(result, state) {
                 heap.push(new_state);
             }
         } else {
@@ -291,10 +308,15 @@ impl Solver {
                     .iter()
                     .filter(|e_valve| state.p_valve.ne(*e_valve))
                     .filter_map(|e_valve| {
-                        let mut new_state = state.clone();
-                        new_state.e_valve = e_valve.clone();
-                        new_state.e_distance = *e_paths.get(e_valve).unwrap();
-                        self.potential_state_option(result, new_state)
+                        let e_distance = e_paths.get(e_valve).unwrap();
+                        self.potential_new_state_option(
+                            result,
+                            &state,
+                            &state.p_valve,
+                            state.p_distance,
+                            e_valve,
+                            *e_distance,
+                        )
                     }),
             );
         }
@@ -318,7 +340,7 @@ impl Solver {
                 state.e_valve = valve.clone();
                 state.e_distance = e_distance;
             }
-            if let Some(new_state) = self.potential_state_option(result, state) {
+            if let Some(new_state) = self.potential_state_update(result, state) {
                 heap.push(new_state);
             }
         } else {
@@ -328,12 +350,16 @@ impl Solver {
                     .iter()
                     .filter(|e_valve| p_valve.ne(*e_valve))
                     .filter_map(|e_valve| {
-                        let mut new_state = state.clone();
-                        new_state.p_valve = p_valve.clone();
-                        new_state.p_distance = *p_paths.get(p_valve).unwrap();
-                        new_state.e_valve = e_valve.clone();
-                        new_state.e_distance = *e_paths.get(e_valve).unwrap();
-                        self.potential_state_option(result, new_state)
+                        let p_distance = p_paths.get(p_valve).unwrap();
+                        let e_distance = e_paths.get(e_valve).unwrap();
+                        self.potential_new_state_option(
+                            result,
+                            &state,
+                            p_valve,
+                            *p_distance,
+                            e_valve,
+                            *e_distance,
+                        )
                     })
             }));
         }
@@ -367,7 +393,7 @@ impl Solver {
                 }
                 state.e_distance -= 1;
 
-                if state.inactive.len() > 0 {
+                if !state.inactive.is_empty() {
                     match (state.p_distance, state.e_distance) {
                         (-1, -1) => self.add_both_targets(state, result, &mut heap),
                         (-1, _) => self.add_player_targets(state, result, &mut heap),
@@ -378,13 +404,13 @@ impl Solver {
             }
         }
 
-        return result;
+        result
     }
 }
 
 fn main() {
     let solver = Solver::from(include_str!("input.txt"));
-    println!("{:?}", solver.solve());
+    println!("{}", solver.solve());
 }
 
 #[cfg(test)]
@@ -395,5 +421,11 @@ mod tests {
     fn example_result() {
         let solver = Solver::from(include_str!("example.txt"));
         assert_eq!(1707, solver.solve());
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let solver = Solver::from(include_str!("input.txt"));
+        assert_eq!(2911, solver.solve());
     }
 }
