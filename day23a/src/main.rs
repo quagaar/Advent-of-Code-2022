@@ -46,9 +46,9 @@ fn print_map(round: usize, elves: &HashSet<(isize, isize)>) {
                     print!(".");
                 }
             }
-            print!("\n");
+            println!();
         }
-        print!("\n");
+        println!();
     }
 }
 
@@ -123,10 +123,10 @@ fn perform_round(
     let mut counts: HashMap<&(isize, isize), usize> = HashMap::new();
     for (_, proposal) in proposals.iter() {
         if let Some(pos) = proposal {
-            *counts.entry(&pos).or_default() += 1;
+            *counts.entry(pos).or_default() += 1;
         }
     }
-    return proposals
+    proposals
         .iter()
         .map(|(elf, proposal)| match proposal {
             Some(pos) => {
@@ -138,7 +138,7 @@ fn perform_round(
             }
             None => *elf,
         })
-        .collect();
+        .collect()
 }
 
 fn solve(input: &str) -> usize {
@@ -155,12 +155,12 @@ fn solve(input: &str) -> usize {
         directions.push_back(dir);
         print_map(round, &elves);
     }
-    return count_empty_spaces(&elves);
+    count_empty_spaces(&elves)
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -171,5 +171,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(110, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(3931, result);
     }
 }
