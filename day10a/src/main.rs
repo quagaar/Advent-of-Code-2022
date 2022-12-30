@@ -17,15 +17,15 @@ fn solve(input: &str) -> i32 {
     let mut signal_strengths = [0; 6];
 
     for line in input.lines() {
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        match parts[0] {
+        let mut parts = line.split_whitespace();
+        match parts.next().unwrap() {
             "noop" => {
                 do_cycle(&mut cycles, x, &mut signal_strengths);
             }
             "addx" => {
                 do_cycle(&mut cycles, x, &mut signal_strengths);
                 do_cycle(&mut cycles, x, &mut signal_strengths);
-                x += parts[1].parse::<i32>().unwrap();
+                x += parts.next().unwrap().parse::<i32>().unwrap();
             }
             _ => panic!("unexpected op: {}", line),
         }
