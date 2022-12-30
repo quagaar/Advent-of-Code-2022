@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::{cell::Cell, cmp::Ordering};
 
 const CHAMBER_WIDTH: usize = 7;
 const NUMBER_OF_ROCKS: usize = 1_000_000_000_000;
@@ -16,7 +16,7 @@ fn get_rocks() -> [Vec<&'static str>; 5] {
     ]
 }
 
-fn empty_space(chamber: &Vec<[char; CHAMBER_WIDTH]>) -> usize {
+fn empty_space(chamber: &[[char; CHAMBER_WIDTH]]) -> usize {
     chamber
         .iter()
         .rev()
@@ -25,21 +25,23 @@ fn empty_space(chamber: &Vec<[char; CHAMBER_WIDTH]>) -> usize {
 }
 
 fn update_chamber_height(chamber: &mut Vec<[char; CHAMBER_WIDTH]>, rock_height: usize) {
-    let space_available = empty_space(&chamber);
+    let space_available = empty_space(chamber);
     let space_required = rock_height + 3;
-    if space_required > space_available {
-        (space_available..space_required).for_each(|_| chamber.push(EMPTY_ROW));
-    } else if space_required < space_available {
-        (space_required..space_available).for_each(|_| {
+    match space_required.cmp(&space_available) {
+        Ordering::Greater => {
+            (space_available..space_required).for_each(|_| chamber.push(EMPTY_ROW))
+        }
+        Ordering::Less => (space_required..space_available).for_each(|_| {
             chamber.pop();
-        });
+        }),
+        _ => {}
     }
 }
 
 fn check_overlap(
     pos: &(usize, usize),
-    rock: &Vec<&'static str>,
-    chamber: &Vec<[char; CHAMBER_WIDTH]>,
+    rock: &[&'static str],
+    chamber: &[[char; CHAMBER_WIDTH]],
 ) -> bool {
     rock.iter().enumerate().any(|(i, &row)| {
         let y = pos.1 - i;
@@ -67,7 +69,7 @@ fn drop_rock(
         }
 
         // If jet movement causes overlap then reset next pos, otherwise set pos to next pos
-        if check_overlap(&next_pos, &rock, &chamber) {
+        if check_overlap(&next_pos, rock, chamber) {
             next_pos = pos;
         } else {
             pos = next_pos;
@@ -80,7 +82,7 @@ fn drop_rock(
 
         // Drop down one place
         next_pos.1 -= 1;
-        if check_overlap(&next_pos, &rock, &chamber) {
+        if check_overlap(&next_pos, rock, chamber) {
             return pos;
         } else {
             pos = next_pos;
@@ -88,11 +90,7 @@ fn drop_rock(
     }
 }
 
-fn add_rock(
-    pos: &(usize, usize),
-    rock: &Vec<&'static str>,
-    chamber: &mut Vec<[char; CHAMBER_WIDTH]>,
-) {
+fn add_rock(pos: &(usize, usize), rock: &[&'static str], chamber: &mut [[char; CHAMBER_WIDTH]]) {
     rock.iter().enumerate().for_each(|(i, &row)| {
         let y = pos.1 - i;
         row.chars().enumerate().for_each(|(j, ch)| {
@@ -103,7 +101,7 @@ fn add_rock(
     })
 }
 
-fn calculate_final_height(end_states: &Vec<(usize, usize, usize)>) -> Option<usize> {
+fn calculate_final_height(end_states: &[(usize, usize, usize)]) -> Option<usize> {
     let target = end_states
         .iter()
         .rev()
@@ -135,12 +133,13 @@ fn calculate_final_height(end_states: &Vec<(usize, usize, usize)>) -> Option<usi
             println!("repeat rock count => {}", repeat_rock_count);
             println!("remaining repeats => {}", remaining_repeats);
             println!("height before repeats => {}", height_before_repeats);
-            println!("repeat height => {}\n", repeat_height);
+            println!("repeat height => {}", repeat_height);
+            println!();
         }
 
-        return Some(height_before_repeats + (remaining_repeats * repeat_height));
+        Some(height_before_repeats + (remaining_repeats * repeat_height))
     } else {
-        return None;
+        None
     }
 }
 
@@ -181,7 +180,7 @@ fn solve(input: &str) -> usize {
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -192,5 +191,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(1514285714288, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(1570930232582, result);
     }
 }
