@@ -7,6 +7,60 @@ struct Location {
     visited: bool,
 }
 
+#[derive(Clone)]
+struct Map {
+    start: (usize, usize),
+    target: (usize, usize),
+    locations: Vec<Vec<Location>>,
+}
+
+impl Map {
+    fn get_location(&mut self, position: (usize, usize)) -> Option<&mut Location> {
+        self.locations
+            .get_mut(position.1)
+            .and_then(|v| v.get_mut(position.0))
+    }
+}
+
+fn parse_map(input: &str) -> Map {
+    let mut start = (0, 0);
+    let mut target = (0, 0);
+    let locations = input
+        .lines()
+        .enumerate()
+        .map(|(y, line)| {
+            line.chars()
+                .enumerate()
+                .map(|(x, ch)| match ch {
+                    'S' => {
+                        start = (x, y);
+                        Location {
+                            height: 0,
+                            visited: true,
+                        }
+                    }
+                    'E' => {
+                        target = (x, y);
+                        Location {
+                            height: 25,
+                            visited: false,
+                        }
+                    }
+                    _ => Location {
+                        height: ch as i32 - 'a' as i32,
+                        visited: false,
+                    },
+                })
+                .collect()
+        })
+        .collect();
+    Map {
+        start,
+        target,
+        locations,
+    }
+}
+
 #[derive(Copy, Clone, Eq, PartialEq)]
 struct State {
     steps: i32,
@@ -41,19 +95,15 @@ fn get_neighbours(position: (usize, usize)) -> Vec<(usize, usize)> {
         result.push((position.0, position.1 - 1))
     }
 
-    return result;
+    result
 }
 
-fn shortest_path(
-    mut map: Vec<Vec<Location>>,
-    start: (usize, usize),
-    target: (usize, usize),
-) -> Option<i32> {
+fn shortest_path(mut map: Map) -> Option<i32> {
     let mut heap = BinaryHeap::new();
     heap.push(State {
         steps: 0,
         height: 0,
-        position: start,
+        position: map.start,
     });
 
     while let Some(State {
@@ -62,12 +112,12 @@ fn shortest_path(
         position,
     }) = heap.pop()
     {
-        if position == target {
+        if position == map.target {
             return Some(steps);
         }
 
         for next in get_neighbours(position) {
-            if let Some(location) = map.get_mut(next.1).map(|v| v.get_mut(next.0)).flatten() {
+            if let Some(location) = map.get_location(next) {
                 if !location.visited && location.height - height <= 1 {
                     location.visited = true;
                     heap.push(State {
@@ -83,45 +133,42 @@ fn shortest_path(
     None
 }
 
-fn main() {
-    let mut target = (0, 0);
-    let map: Vec<Vec<Location>> = include_str!("input.txt")
-        .lines()
-        .enumerate()
-        .map(|(y, line)| {
-            line.chars()
-                .enumerate()
-                .map(|(x, ch)| match ch {
-                    'S' => Location {
-                        height: 0,
-                        visited: false,
-                    },
-                    'E' => {
-                        target = (x, y);
-                        Location {
-                            height: 25,
-                            visited: false,
-                        }
-                    }
-                    _ => Location {
-                        height: ch as i32 - 'a' as i32,
-                        visited: false,
-                    },
-                })
-                .collect()
-        })
-        .collect();
+fn solve(input: &str) -> Option<i32> {
+    let map = parse_map(input);
 
-    let result = (0..map.len())
-        .map(|y| {
-            (0..map[y].len())
-                .filter(|&x| map[y][x].height == 0)
+    (0..map.locations.len())
+        .flat_map(|y| {
+            (0..map.locations[y].len())
+                .filter(|&x| map.locations[y][x].height == 0)
                 .map(|x| (x, y))
                 .collect::<Vec<(usize, usize)>>()
         })
-        .flatten()
-        .filter_map(|start| shortest_path(map.clone(), start, target))
-        .min();
+        .filter_map(|start| {
+            let mut map = map.clone();
+            map.start = start;
+            shortest_path(map)
+        })
+        .min()
+}
 
+fn main() {
+    let result = solve(include_str!("input.txt"));
     println!("{:?}", result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_result() {
+        let result = solve(include_str!("example.txt"));
+        assert_eq!(Some(29), result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(Some(321), result);
+    }
 }
