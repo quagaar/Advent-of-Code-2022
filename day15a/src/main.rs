@@ -28,7 +28,7 @@ impl Sensor {
                 )
             })
             .unwrap();
-        return Sensor { position, beacon };
+        Sensor { position, beacon }
     }
 
     fn beacon_distance(&self) -> u32 {
@@ -42,15 +42,15 @@ impl Sensor {
             let spread = (beacon_distance - row_distance) as i32;
             let start = self.position.0 - spread;
             let end = self.position.0 + spread;
-            return Some(start..=end);
+            Some(start..=end)
         } else {
-            return None;
+            None
         }
     }
 }
 
 fn solve(input: &str, target_row: i32) -> usize {
-    let sensors: Vec<Sensor> = input.lines().map(|line| Sensor::from(line)).collect();
+    let sensors: Vec<Sensor> = input.lines().map(Sensor::from).collect();
 
     let positions = sensors
         .iter()
@@ -64,12 +64,12 @@ fn solve(input: &str, target_row: i32) -> usize {
         .map(|sensor| sensor.beacon.0)
         .collect::<HashSet<_>>();
 
-    return positions.len() - beacons.len();
+    positions.len() - beacons.len()
 }
 
 fn main() {
     let result = solve(include_str!("input.txt"), 2000000);
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -80,5 +80,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"), 10);
         assert_eq!(26, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"), 2000000);
+        assert_eq!(5716881, result);
     }
 }
