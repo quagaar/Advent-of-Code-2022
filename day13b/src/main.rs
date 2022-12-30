@@ -9,9 +9,9 @@ enum PacketData {
 impl Ord for PacketData {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (PacketData::Number(left), PacketData::Number(right)) => left.cmp(&right),
+            (PacketData::Number(left), PacketData::Number(right)) => left.cmp(right),
             (PacketData::Number(_), PacketData::List(right)) => vec![self.clone()].cmp(right),
-            (PacketData::List(left), PacketData::List(right)) => left.cmp(&right),
+            (PacketData::List(left), PacketData::List(right)) => left.cmp(right),
             (PacketData::List(left), PacketData::Number(_)) => left.cmp(&vec![other.clone()]),
         }
     }
@@ -24,9 +24,9 @@ impl PartialOrd for PacketData {
 }
 
 fn parse_data(src: &str) -> (PacketData, &str) {
-    match src.chars().nth(0) {
+    match src.chars().next() {
         Some('[') => parse_list(&src[1..]),
-        Some(ch) if ch >= '0' && ch <= '9' => parse_number(src),
+        Some(ch) if ('0'..='9').contains(&ch) => parse_number(src),
         _ => panic!("Unparsable string: {}", src),
     }
 }
@@ -34,15 +34,15 @@ fn parse_data(src: &str) -> (PacketData, &str) {
 fn parse_list(src: &str) -> (PacketData, &str) {
     let mut list: Vec<PacketData> = vec![];
     let mut remain = src;
-    while let Some(ch) = remain.chars().nth(0) {
+    while let Some(ch) = remain.chars().next() {
         if ch == ']' {
             return (PacketData::List(list), &remain[1..]);
         }
         let (value, rest) = parse_data(remain);
         list.push(value);
-        remain = rest.trim_start_matches(",").trim_start();
+        remain = rest.trim_start_matches(',').trim_start();
     }
-    return (PacketData::List(list), &remain[0..0]);
+    (PacketData::List(list), &remain[0..0])
 }
 
 fn parse_number(src: &str) -> (PacketData, &str) {
@@ -77,7 +77,7 @@ fn solve(input: &str) -> usize {
 
 fn main() {
     let result = solve(include_str!("input.txt"));
-    println!("{:?}", result);
+    println!("{}", result);
 }
 
 #[cfg(test)]
@@ -88,5 +88,11 @@ mod tests {
     fn example_result() {
         let result = solve(include_str!("example.txt"));
         assert_eq!(140, result);
+    }
+
+    #[test]
+    fn puzzle_result() {
+        let result = solve(include_str!("input.txt"));
+        assert_eq!(20280, result);
     }
 }
