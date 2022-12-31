@@ -46,18 +46,14 @@ fn to_balanced_quinary(number: i64) -> String {
     }
 
     if digits.is_empty() {
-        return String::from("0");
+        String::from("0")
     } else {
-        return String::from_iter(digits.into_iter().rev());
+        String::from_iter(digits.into_iter().rev())
     }
 }
 
 fn solve(input: &str) -> String {
-    let numbers = input
-        .lines()
-        .map(parse_balanced_quinary)
-        .collect::<Vec<_>>();
-    return to_balanced_quinary(numbers.into_iter().sum());
+    to_balanced_quinary(input.lines().map(parse_balanced_quinary).sum())
 }
 
 fn main() {
@@ -68,7 +64,6 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_case::test_case;
 
     #[test]
     fn example_result() {
@@ -82,59 +77,59 @@ mod tests {
         assert_eq!("20=212=1-12=200=00-1", result);
     }
 
-    #[test_case("0" => 0)]
-    #[test_case("1" => 1)]
-    #[test_case("2" => 2)]
-    #[test_case("1=" => 3)]
-    #[test_case("1-" => 4)]
-    #[test_case("10" => 5)]
-    #[test_case("11" => 6)]
-    #[test_case("12" => 7)]
-    #[test_case("2=" => 8)]
-    #[test_case("2-" => 9)]
-    #[test_case("20" => 10)]
-    #[test_case("1=0" => 15)]
-    #[test_case("1-0" => 20)]
-    #[test_case("1=11-2" => 2022)]
-    #[test_case("1-0---0" => 12345)]
-    #[test_case("1121-1110-1=0" => 314159265)]
-    #[test_case("--=-1---01-20" => -314159265)]
-    fn test_parse_balanced_quinary(line: &str) -> i64 {
-        parse_balanced_quinary(line)
+    #[test]
+    fn test_parse_balanced_quinary() {
+        assert_eq!(parse_balanced_quinary("0"), 0);
+        assert_eq!(parse_balanced_quinary("1"), 1);
+        assert_eq!(parse_balanced_quinary("2"), 2);
+        assert_eq!(parse_balanced_quinary("1="), 3);
+        assert_eq!(parse_balanced_quinary("1-"), 4);
+        assert_eq!(parse_balanced_quinary("10"), 5);
+        assert_eq!(parse_balanced_quinary("11"), 6);
+        assert_eq!(parse_balanced_quinary("12"), 7);
+        assert_eq!(parse_balanced_quinary("2="), 8);
+        assert_eq!(parse_balanced_quinary("2-"), 9);
+        assert_eq!(parse_balanced_quinary("20"), 10);
+        assert_eq!(parse_balanced_quinary("1=0"), 15);
+        assert_eq!(parse_balanced_quinary("1-0"), 20);
+        assert_eq!(parse_balanced_quinary("1=11-2"), 2022);
+        assert_eq!(parse_balanced_quinary("1-0---0"), 12345);
+        assert_eq!(parse_balanced_quinary("1121-1110-1=0"), 314159265);
+        assert_eq!(parse_balanced_quinary("--=-1---01-20"), -314159265);
     }
 
-    #[test_case(0 => "0")]
-    #[test_case(1 => "1")]
-    #[test_case(2 => "2")]
-    #[test_case(3 => "1=")]
-    #[test_case(4 => "1-")]
-    #[test_case(5 => "10")]
-    #[test_case(6 => "11")]
-    #[test_case(7 => "12")]
-    #[test_case(8 => "2=")]
-    #[test_case(9 => "2-")]
-    #[test_case(10 => "20")]
-    #[test_case(15 => "1=0")]
-    #[test_case(20 => "1-0")]
-    #[test_case(2022 => "1=11-2")]
-    #[test_case(12345 => "1-0---0")]
-    #[test_case(314159265 => "1121-1110-1=0")]
-    #[test_case(-1 => "-"; "convert minus 1")]
-    #[test_case(-2 => "="; "convert minus 2")]
-    #[test_case(-3 => "-2"; "convert minus 3")]
-    #[test_case(-4 => "-1"; "convert minus 4")]
-    #[test_case(-5 => "-0"; "convert minus 5")]
-    #[test_case(-6 => "--"; "convert minus 6")]
-    #[test_case(-7 => "-="; "convert minus 7")]
-    #[test_case(-8 => "=2"; "convert minus 8")]
-    #[test_case(-9 => "=1"; "convert minus 9")]
-    #[test_case(-10 => "=0"; "convert minus 10")]
-    #[test_case(-15 => "-20"; "convert minus 15")]
-    #[test_case(-20 => "-10"; "convert minus 20")]
-    #[test_case(-2022 => "-2--1="; "convert minus 2022")]
-    #[test_case(-12345 => "-101110"; "convert minus 12345")]
-    #[test_case(-314159265 => "--=-1---01-20"; "convert minus 314159265")]
-    fn test_to_balanced_quinary(number: i64) -> String {
-        to_balanced_quinary(number)
+    #[test]
+    fn test_to_balanced_quinary() {
+        assert_eq!(to_balanced_quinary(0), "0");
+        assert_eq!(to_balanced_quinary(1), "1");
+        assert_eq!(to_balanced_quinary(2), "2");
+        assert_eq!(to_balanced_quinary(3), "1=");
+        assert_eq!(to_balanced_quinary(4), "1-");
+        assert_eq!(to_balanced_quinary(5), "10");
+        assert_eq!(to_balanced_quinary(6), "11");
+        assert_eq!(to_balanced_quinary(7), "12");
+        assert_eq!(to_balanced_quinary(8), "2=");
+        assert_eq!(to_balanced_quinary(9), "2-");
+        assert_eq!(to_balanced_quinary(10), "20");
+        assert_eq!(to_balanced_quinary(15), "1=0");
+        assert_eq!(to_balanced_quinary(20), "1-0");
+        assert_eq!(to_balanced_quinary(2022), "1=11-2");
+        assert_eq!(to_balanced_quinary(12345), "1-0---0");
+        assert_eq!(to_balanced_quinary(314159265), "1121-1110-1=0");
+        assert_eq!(to_balanced_quinary(-1), "-");
+        assert_eq!(to_balanced_quinary(-2), "=");
+        assert_eq!(to_balanced_quinary(-3), "-2");
+        assert_eq!(to_balanced_quinary(-4), "-1");
+        assert_eq!(to_balanced_quinary(-5), "-0");
+        assert_eq!(to_balanced_quinary(-6), "--");
+        assert_eq!(to_balanced_quinary(-7), "-=");
+        assert_eq!(to_balanced_quinary(-8), "=2");
+        assert_eq!(to_balanced_quinary(-9), "=1");
+        assert_eq!(to_balanced_quinary(-10), "=0");
+        assert_eq!(to_balanced_quinary(-15), "-20");
+        assert_eq!(to_balanced_quinary(-20), "-10");
+        assert_eq!(to_balanced_quinary(-2022), "-2--1=");
+        assert_eq!(to_balanced_quinary(-12345), "-101110");
+        assert_eq!(to_balanced_quinary(-314159265), "--=-1---01-20");
     }
 }
